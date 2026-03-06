@@ -1,9 +1,18 @@
-package models
+package model
 
 const (
 	Counter = "counter"
 	Gauge   = "gauge"
 )
+
+var MType = []string{
+	Counter,
+	Gauge,
+}
+
+var MetricsErrors = map[string]string{
+	"incorrect_type": "Incorrect metric type",
+}
 
 // NOTE: Не усложняем пример, вводя иерархическую вложенность структур.
 // Органичиваясь плоской моделью.
@@ -13,6 +22,7 @@ const (
 type Metrics struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`
+	Name  string   `json:"name"`
 	Delta *int64   `json:"delta,omitempty"`
 	Value *float64 `json:"value,omitempty"`
 	Hash  string   `json:"hash,omitempty"`
