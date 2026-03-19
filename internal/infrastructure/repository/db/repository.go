@@ -6,19 +6,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type dbRepository struct {
-	db *sql.DB
-}
-
-func NewStorage(dbType string, databaseURI string) (*dbRepository, error) {
+func NewStorage(dbType string, databaseURI string) (MetricsRepository, error) {
 	db, err := sql.Open(dbType, databaseURI)
 	if err != nil {
 		return nil, err
 	}
 
-	return &dbRepository{db: db}, nil
-}
-
-func (r *dbRepository) Close() {
-	r.db.Close()
+	return &MemStorage{db: db}, nil
 }

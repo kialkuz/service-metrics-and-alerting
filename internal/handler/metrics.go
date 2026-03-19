@@ -2,6 +2,7 @@ package handler
 
 import (
 	"kialkuz/service-metrics-and-alerting/internal/model"
+	"kialkuz/service-metrics-and-alerting/internal/service"
 	"net/http"
 	"slices"
 	"strconv"
@@ -9,16 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//go:generate go run go.uber.org/mock/mockgen -source=handler.go -destination=mocks/handler_mock.go -package=mocks -typed
-type MetricsService interface {
-	Save(name model.Metrics) error
-}
-
 type MetricsHandler struct {
-	metricsService MetricsService
+	metricsService service.MetricsWriter
 }
 
-func NewMetricsHandler(metricsService MetricsService) *MetricsHandler {
+func NewMetricsHandler(metricsService service.MetricsWriter) *MetricsHandler {
 	return &MetricsHandler{
 		metricsService: metricsService,
 	}
