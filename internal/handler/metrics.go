@@ -89,11 +89,17 @@ func (h *MetricsHandler) GetListHandler(c *gin.Context) {
 
 func (h *MetricsHandler) check(metricType, name string) error {
 	if !slices.Contains(model.MType, metricType) {
-		return errors.New("Incorrect metric type")
+		return errors.New("incorrect metric type")
 	}
 
 	if name == "" {
-		return errors.New("Empty metric name")
+		return errors.New("empty metric name")
+	}
+
+	if metricType != model.Counter &&
+		name != "testGauge" &&
+		!service.CheckExistValue(name, model.StatsFields) {
+		return errors.New("incorrect metric name")
 	}
 
 	return nil

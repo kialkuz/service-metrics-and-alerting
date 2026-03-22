@@ -1,12 +1,10 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/config"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db"
 	"kialkuz/service-metrics-and-alerting/internal/model"
-	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
 	"math/rand"
 	"net/http"
 	"reflect"
@@ -69,7 +67,7 @@ func (s *MetricsService) Save(metrics model.Metrics) error {
 
 func (s *MetricsService) update(metrics model.Metrics) error {
 	existMetric, err := s.metricsRepository.Get(metrics.MType, metrics.Name)
-	if err != nil && errors.Is(err, pkgErrors.ErrNotFound) {
+	if err != nil {
 		if err := s.metricsRepository.Add(metrics); err != nil {
 			return err
 		}
@@ -120,7 +118,7 @@ func (s *MetricsService) collectMemStats() map[string]float64 {
 
 func (s *MetricsService) Send(metricType string, name string, value float64) (*http.Response, error) {
 	query := fmt.Sprintf("/update/%s/%s/%f", metricType, name, value)
-	response, err := http.Post(config.NewConfig().Url+query, "text/plain", nil)
+	response, err := http.Post(config.NewConfig().URL+query, "text/plain", nil)
 	if err != nil {
 		return nil, err
 	}

@@ -12,7 +12,7 @@ type Config struct {
 	DBType     string
 	ServerHost string
 	ServerPort string
-	Url        string
+	URL        string
 }
 
 func NewConfig() *Config {
@@ -25,6 +25,6 @@ func NewConfig() *Config {
 		DBType:     env.GetEnv("DB_TYPE", dbType),
 		ServerHost: serverHost,
 		ServerPort: serverPort,
-		Url:        "http://" + serverHost + ":" + serverPort,
+		URL:        "http://" + serverHost + ":" + serverPort,
 	}
 }
