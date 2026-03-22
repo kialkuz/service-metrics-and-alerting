@@ -25,7 +25,10 @@ func main() {
 	handler := handler.NewMetricsHandler(services)
 
 	router := gin.Default()
+	router.LoadHTMLGlob("templates/*")
 	router.POST("/update/:type/:name/:value", handler.AddHandler)
+	router.GET("/value/:type/:name", handler.GetMetricHandler)
+	router.GET("/", handler.GetListHandler)
 
 	err = http.ListenAndServe(":"+appConfigData.ServerPort, router)
 	if err != nil {

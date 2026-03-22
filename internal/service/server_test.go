@@ -19,11 +19,12 @@ func TestAddMetricSuccess(t *testing.T) {
 	mockRepo := mocks.NewMockMetricsRepository(ctrl)
 	service := NewMetricsService(mockRepo)
 
+	metricType := model.Counter
 	metricName := "test_name"
 	metricValue := rand.Float64()
 
-	mockRepo.EXPECT().GetMetric(metricName).Return(nil, errors.ErrNotFound)
-	mockRepo.EXPECT().AddMetric(gomock.Any()).Return(nil)
+	mockRepo.EXPECT().Get(metricType, metricName).Return(nil, errors.ErrNotFound)
+	mockRepo.EXPECT().Add(gomock.Any()).Return(nil)
 
 	modelMetrics := model.Metrics{
 		MType: model.Counter,
@@ -44,6 +45,7 @@ func TestUpdateMetricSuccess(t *testing.T) {
 
 	currentMetricValue := rand.Float64()
 
+	metricType := model.Counter
 	metricName := "test_name"
 	newMetricValue := rand.Float64()
 
@@ -54,13 +56,13 @@ func TestUpdateMetricSuccess(t *testing.T) {
 		Value: &newMetricValue,
 	}
 
-	mockRepo.EXPECT().GetMetric(metricName).Return(&model.Metrics{
+	mockRepo.EXPECT().Get(metricType, metricName).Return(&model.Metrics{
 		ID:    modelMetrics.ID,
 		MType: modelMetrics.MType,
 		Name:  modelMetrics.Name,
 		Value: &currentMetricValue,
 	}, nil)
-	mockRepo.EXPECT().UpdateMetric(gomock.Any(), gomock.Any()).Return(nil)
+	mockRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
 	err := service.Save(modelMetrics)
 

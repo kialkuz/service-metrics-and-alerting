@@ -14,11 +14,13 @@ import (
 	"strconv"
 )
 
-type MetricsWriter interface {
+type MetricsServerService interface {
 	Save(name model.Metrics) error
+	Get(metricType, name string) (*model.Metrics, error)
+	GetList() ([]model.Metrics, error)
 }
 
-type MetricCollecter interface {
+type MetricsAgentService interface {
 	Collect() map[string]map[string]float64
 	Send(metricType string, name string, value float64) (resp *http.Response, err error)
 }
@@ -32,14 +34,32 @@ func NewMetricsService(metricsRepository db.MetricsRepository) *MetricsService {
 	return &MetricsService{metricsRepository: metricsRepository}
 }
 
+func (s *MetricsService) Get(metricType, name string) (*model.Metrics, error) {
+	item, err := s.metricsRepository.Get(metricType, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return item, nil
+}
+
+func (s *MetricsService) GetList() ([]model.Metrics, error) {
+	items, err := s.metricsRepository.GetList()
+	if err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
 func (s *MetricsService) Save(metrics model.Metrics) error {
 	switch metrics.MType {
 	case model.Gauge:
-		if err := s.metricsRepository.AddMetric(metrics); err != nil {
+		if err := s.metricsRepository.Add(metrics); err != nil {
 			return err
 		}
 	case model.Counter:
-		if err := s.updateMetric(metrics); err != nil {
+		if err := s.update(metrics); err != nil {
 			return err
 		}
 	}
@@ -47,10 +67,10 @@ func (s *MetricsService) Save(metrics model.Metrics) error {
 	return nil
 }
 
-func (s *MetricsService) updateMetric(metrics model.Metrics) error {
-	existMetric, err := s.metricsRepository.GetMetric(metrics.Name)
+func (s *MetricsService) update(metrics model.Metrics) error {
+	existMetric, err := s.metricsRepository.Get(metrics.MType, metrics.Name)
 	if err != nil && errors.Is(err, pkgErrors.ErrNotFound) {
-		if err := s.metricsRepository.AddMetric(metrics); err != nil {
+		if err := s.metricsRepository.Add(metrics); err != nil {
 			return err
 		}
 	} else {
@@ -60,7 +80,7 @@ func (s *MetricsService) updateMetric(metrics model.Metrics) error {
 		}
 		newValue := *metrics.Value + (*existMetric.Value)
 
-		if err := s.metricsRepository.UpdateMetric(newValue, id); err != nil {
+		if err := s.metricsRepository.Update(newValue, id); err != nil {
 			return fmt.Errorf("repo SaveMetric: %w", err)
 		}
 	}

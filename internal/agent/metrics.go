@@ -13,10 +13,10 @@ const (
 )
 
 type MetricsAgent struct {
-	metricsService service.MetricCollecter
+	metricsService service.MetricsAgentService
 }
 
-func NewMetricsAgent(metricsService service.MetricCollecter) *MetricsAgent {
+func NewMetricsAgent(metricsService service.MetricsAgentService) *MetricsAgent {
 	return &MetricsAgent{
 		metricsService: metricsService,
 	}

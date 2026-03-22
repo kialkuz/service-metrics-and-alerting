@@ -2,16 +2,18 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/model"
-	"kialkuz/service-metrics-and-alerting/pkg/errors"
+	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
 )
 
 //go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
 type MetricsRepository interface {
-	AddMetric(metrics model.Metrics) error
-	UpdateMetric(value float64, id int) error
-	GetMetric(name string) (*model.Metrics, error)
+	Add(metrics model.Metrics) error
+	Update(value float64, id int) error
+	Get(metricType, name string) (*model.Metrics, error)
+	GetList() ([]model.Metrics, error)
 	Close()
 }
 
@@ -24,7 +26,7 @@ func (r *MemStorage) Close() {
 	r.db.Close()
 }
 
-func (r *MemStorage) AddMetric(metrics model.Metrics) error {
+func (r *MemStorage) Add(metrics model.Metrics) error {
 	_, err := r.db.Exec(`INSERT INTO metrics (type, name, value) VALUES ($1, $2, $3)`,
 		metrics.MType,
 		metrics.Name,
@@ -36,7 +38,7 @@ func (r *MemStorage) AddMetric(metrics model.Metrics) error {
 	return nil
 }
 
-func (r *MemStorage) UpdateMetric(value float64, id int) error {
+func (r *MemStorage) Update(value float64, id int) error {
 	_, err := r.db.Exec(`UPDATE metrics SET value = $1 WHERE id = $2`, value, id)
 	if err != nil {
 		return fmt.Errorf("error update metrics: %w", err)
@@ -44,12 +46,38 @@ func (r *MemStorage) UpdateMetric(value float64, id int) error {
 	return nil
 }
 
-func (r *MemStorage) GetMetric(name string) (*model.Metrics, error) {
+func (r *MemStorage) Get(metricType, name string) (*model.Metrics, error) {
 	var metrics model.Metrics
-	err := r.db.QueryRow(`SELECT id, type, name, value FROM metrics WHERE name=$1`, name).
+	err := r.db.QueryRow(`SELECT id, type, name, value FROM metrics WHERE type=$1 AND name=$2`, metricType, name).
 		Scan(&metrics.ID, &metrics.MType, &metrics.Name, &metrics.Value)
 	if err != nil {
-		return nil, errors.ErrNotFound
+		return nil, errors.New(pkgErrors.ErrNotFound.Error())
 	}
 	return &metrics, nil
+}
+
+func (r *MemStorage) GetList() ([]model.Metrics, error) {
+	var metrics []model.Metrics
+	rows, err := r.db.Query(`SELECT id, type, name, value FROM metrics`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var metric model.Metrics
+
+		err := rows.Scan(&metric.ID, &metric.MType, &metric.Name, &metric.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		metrics = append(metrics, metric)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return metrics, nil
 }

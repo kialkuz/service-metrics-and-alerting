@@ -1,0 +1,18 @@
+<TABLE>
+    <tr>
+        <td>Name</td>
+        <td>Value</td>
+    </tr>
+    {{ range $metric := .metrics }}
+        <tr>
+            <td>{{$metric.Name}}</td>
+            <td>
+                {{ if $metric.Value }}
+                    {{ printf "%.2f" $metric.Value }}
+                {{ else }}
+                    Empty value
+                {{ end }}
+            </td>
+        </tr>
+    {{ end }}
+</TABLE>
