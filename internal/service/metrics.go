@@ -53,11 +53,11 @@ func (s *MetricsService) GetList() ([]model.Metrics, error) {
 func (s *MetricsService) Save(metrics model.Metrics) error {
 	switch metrics.MType {
 	case model.Gauge:
-		if err := s.metricsRepository.Add(metrics); err != nil {
+		if err := s.updateGauge(metrics); err != nil {
 			return err
 		}
 	case model.Counter:
-		if err := s.update(metrics); err != nil {
+		if err := s.updateCounter(metrics); err != nil {
 			return err
 		}
 	}
@@ -65,7 +65,27 @@ func (s *MetricsService) Save(metrics model.Metrics) error {
 	return nil
 }
 
-func (s *MetricsService) update(metrics model.Metrics) error {
+func (s *MetricsService) updateGauge(metrics model.Metrics) error {
+	existMetric, err := s.metricsRepository.Get(metrics.MType, metrics.Name)
+	if err != nil {
+		if err := s.metricsRepository.Add(metrics); err != nil {
+			return err
+		}
+	} else {
+		id, err := strconv.Atoi(existMetric.ID)
+		if err != nil {
+			return err
+		}
+
+		if err := s.metricsRepository.Update(*metrics.Value, id); err != nil {
+			return fmt.Errorf("repo SaveMetric: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *MetricsService) updateCounter(metrics model.Metrics) error {
 	existMetric, err := s.metricsRepository.Get(metrics.MType, metrics.Name)
 	if err != nil {
 		if err := s.metricsRepository.Add(metrics); err != nil {

@@ -27,5 +27,6 @@ func getDatabaseURI() string {
 		":" + env.GetEnv("PASSWORD", password) +
 		"@" + env.GetEnv("HOST", host) +
 		":" + env.GetEnv("PORT", port) +
-		"/" + env.GetEnv("DB_NAME", dbName)
+		"/" + env.GetEnv("DB_NAME", dbName) +
+		"?sslmode=disable"
 }

@@ -5,6 +5,7 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"kialkuz/service-metrics-and-alerting/internal/service"
+	"log"
 	"net/http"
 	"slices"
 	"strconv"
@@ -23,30 +24,44 @@ func NewMetricsHandler(metricsService service.MetricsServerService) *MetricsHand
 }
 
 func (h *MetricsHandler) AddHandler(c *gin.Context) {
-	contentType := c.GetHeader("Content-Type")
-	if contentType != "text/plain" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect header type"})
-		return
-	}
-
 	metricType := c.Param("type")
 	name := c.Param("name")
 
-	err := h.check(metricType, name)
+	httpCode, err := h.check(metricType, name)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println("11111111111111111")
+		log.Println(err)
+		c.JSON(httpCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	newValue := c.Param("value")
+	if newValue == "" {
+		log.Println("2222222222222222222222")
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, errors.New("empty metric value"))
+		return
 	}
 
 	var metrics model.Metrics
 	metrics.MType = metricType
 	metrics.Name = name
-	value, err := strconv.ParseFloat(c.Param("value"), 64)
+	value, err := strconv.ParseFloat(newValue, 64)
 	if err != nil {
+		log.Println("3333333333333333333333333")
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect value type"})
+		return
 	}
 	metrics.Value = &value
 
-	h.metricsService.Save(metrics)
+	err = h.metricsService.Save(metrics)
+	if err != nil {
+		log.Println("4444444444444444444444")
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Metric not saved"})
+		return
+	}
 
 	c.Status(http.StatusOK)
 }
@@ -55,18 +70,19 @@ func (h *MetricsHandler) GetMetricHandler(c *gin.Context) {
 	metricType := c.Param("type")
 	name := c.Param("name")
 
-	err := h.check(metricType, name)
+	httpCode, err := h.check(metricType, name)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(httpCode, gin.H{"error": err.Error()})
+		return
 	}
 
 	metric, err := h.metricsService.Get(metricType, name)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, metric)
+	c.JSON(http.StatusOK, *metric.Value)
 }
 
 func (h *MetricsHandler) GetListHandler(c *gin.Context) {
@@ -87,20 +103,14 @@ func (h *MetricsHandler) GetListHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "metrics_list.html", gin.H{"metrics": metrics})
 }
 
-func (h *MetricsHandler) check(metricType, name string) error {
+func (h *MetricsHandler) check(metricType, name string) (int, error) {
 	if !slices.Contains(model.MType, metricType) {
-		return errors.New("incorrect metric type")
+		return http.StatusBadRequest, errors.New("incorrect metric type")
 	}
 
 	if name == "" {
-		return errors.New("empty metric name")
+		return http.StatusNotFound, errors.New("empty metric name")
 	}
 
-	if metricType != model.Counter &&
-		name != "testGauge" &&
-		!service.CheckExistValue(name, model.StatsFields) {
-		return errors.New("incorrect metric name")
-	}
-
-	return nil
+	return 0, nil
 }

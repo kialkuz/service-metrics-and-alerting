@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
+	"log"
 )
 
 //go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
@@ -33,6 +34,8 @@ func (r *MemStorage) Add(metrics model.Metrics) error {
 		*metrics.Value,
 	)
 	if err != nil {
+		log.Println("555555555555555555555")
+		log.Println(err)
 		return fmt.Errorf("error add metrics: %w", err)
 	}
 	return nil
@@ -48,9 +51,10 @@ func (r *MemStorage) Update(value float64, id int) error {
 
 func (r *MemStorage) Get(metricType, name string) (*model.Metrics, error) {
 	var metrics model.Metrics
-	err := r.db.QueryRow(`SELECT id, type, name, value FROM metrics WHERE type=$1 AND name=$2`, metricType, name).
-		Scan(&metrics.ID, &metrics.MType, &metrics.Name, &metrics.Value)
+	row := r.db.QueryRow(`SELECT id, type, name, value FROM metrics WHERE type=$1 AND name=$2`, metricType, name)
+	err := row.Scan(&metrics.ID, &metrics.MType, &metrics.Name, &metrics.Value)
 	if err != nil {
+		log.Println(err)
 		return nil, errors.New(pkgErrors.ErrNotFound.Error())
 	}
 	return &metrics, nil
