@@ -1,19 +1,32 @@
 package main
 
 import (
+	"flag"
 	appConfig "kialkuz/service-metrics-and-alerting/internal/config"
 	dbConfig "kialkuz/service-metrics-and-alerting/internal/config/db"
 	"kialkuz/service-metrics-and-alerting/internal/handler"
+	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db"
+	"kialkuz/service-metrics-and-alerting/internal/router"
 	"kialkuz/service-metrics-and-alerting/internal/service"
 	"log"
 	"net/http"
+)
 
-	"github.com/gin-gonic/gin"
+const (
+	host = "localhost"
+	port = "8080"
 )
 
 func main() {
-	appConfigData := appConfig.NewConfig()
+	serverAddress := flag.String(
+		"a",
+		env.GetEnv("SERVER_HOST", host)+":"+env.GetEnv("SERVER_PORT", port),
+		"server address",
+	)
+	flag.Parse()
+
+	appConfigData := appConfig.NewConfig(*serverAddress)
 	dbConfigData := dbConfig.NewConfig()
 	storage, err := db.NewStorage(appConfigData.DBType, dbConfigData.DatabaseURI)
 	if err != nil {
@@ -24,14 +37,10 @@ func main() {
 	services := service.NewMetricsService(storage)
 	handler := handler.NewMetricsHandler(services)
 
-	router := gin.Default()
-	router.LoadHTMLGlob("templates/*")
-	router.POST("/update/:type/:name/:value", handler.AddHandler)
-	router.GET("/value/:type/:name", handler.GetMetricHandler)
-	router.GET("/", handler.GetListHandler)
+	router := router.Init(handler)
 
-	err = http.ListenAndServe(":"+appConfigData.ServerPort, router)
-	if err != nil {
-		panic(err)
+	log.Println("Server running on port ", appConfigData.ServerPort)
+	if err := http.ListenAndServe(":"+appConfigData.ServerPort, router); err != nil {
+		log.Fatal("Failed to start server ", err)
 	}
 }

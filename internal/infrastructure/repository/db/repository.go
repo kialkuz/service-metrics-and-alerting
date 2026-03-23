@@ -14,7 +14,7 @@ func NewStorage(dbType string, databaseURI string) (MetricsRepository, error) {
 	}
 
 	_, err = db.Exec(`
-		CREATE SEQUENCE users_id_seq;
+		CREATE SEQUENCE IF NOT EXISTS users_id_seq;
 		CREATE TABLE IF NOT EXISTS public.metrics (
 			id int4 DEFAULT nextval('users_id_seq'::regclass) NOT NULL,
 			"type" varchar(50) NOT NULL,

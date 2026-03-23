@@ -138,7 +138,7 @@ func (s *MetricsService) collectMemStats() map[string]float64 {
 
 func (s *MetricsService) Send(metricType string, name string, value float64) (*http.Response, error) {
 	query := fmt.Sprintf("/update/%s/%s/%f", metricType, name, value)
-	response, err := http.Post(config.NewConfig().URL+query, "text/plain", nil)
+	response, err := http.Post(config.GetURL()+query, "text/plain", nil)
 	if err != nil {
 		return nil, err
 	}

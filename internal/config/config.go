@@ -1,6 +1,9 @@
 package config
 
-import "kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
+import (
+	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
+	"strings"
+)
 
 const (
 	dbType = "postgres"
@@ -15,16 +18,23 @@ type Config struct {
 	URL        string
 }
 
-func NewConfig() *Config {
+var config Config
+
+func NewConfig(serverAddress string) Config {
 	env.Load()
 
-	serverHost := env.GetEnv("SERVER_HOST", host)
-	serverPort := env.GetEnv("SERVER_PORT", port)
+	addressParts := strings.Split(serverAddress, ":")
 
-	return &Config{
+	config = Config{
 		DBType:     env.GetEnv("DB_TYPE", dbType),
-		ServerHost: serverHost,
-		ServerPort: serverPort,
-		URL:        "http://" + serverHost + ":" + serverPort,
+		ServerHost: addressParts[0],
+		ServerPort: addressParts[1],
+		URL:        "http://" + addressParts[0] + ":" + addressParts[1],
 	}
+
+	return config
+}
+
+func GetURL() string {
+	return config.URL
 }
