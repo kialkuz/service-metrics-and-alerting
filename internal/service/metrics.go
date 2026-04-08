@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/config"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db"
@@ -13,9 +12,9 @@ import (
 )
 
 type MetricsServerService interface {
-	Save(ctx context.Context, name model.Metrics) error
-	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
-	GetList(ctx context.Context) ([]model.Metrics, error)
+	Save(name model.Metrics) error
+	Get(metricType, name string) (*model.Metrics, error)
+	GetList() ([]model.Metrics, error)
 }
 
 type MetricsAgentService interface {
@@ -32,8 +31,8 @@ func NewMetricsService(metricsRepository db.MetricsRepository) *MetricsService {
 	return &MetricsService{metricsRepository: metricsRepository}
 }
 
-func (s *MetricsService) Get(ctx context.Context, metricType, name string) (*model.Metrics, error) {
-	item, err := s.metricsRepository.Get(ctx, metricType, name)
+func (s *MetricsService) Get(metricType, name string) (*model.Metrics, error) {
+	item, err := s.metricsRepository.Get(metricType, name)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +40,8 @@ func (s *MetricsService) Get(ctx context.Context, metricType, name string) (*mod
 	return item, nil
 }
 
-func (s *MetricsService) GetList(ctx context.Context) ([]model.Metrics, error) {
-	items, err := s.metricsRepository.GetList(ctx)
+func (s *MetricsService) GetList() ([]model.Metrics, error) {
+	items, err := s.metricsRepository.GetList()
 	if err != nil {
 		return nil, err
 	}
@@ -50,14 +49,14 @@ func (s *MetricsService) GetList(ctx context.Context) ([]model.Metrics, error) {
 	return items, nil
 }
 
-func (s *MetricsService) Save(ctx context.Context, metrics model.Metrics) error {
+func (s *MetricsService) Save(metrics model.Metrics) error {
 	switch metrics.MType {
 	case model.Gauge:
-		if err := s.updateGauge(ctx, metrics); err != nil {
+		if err := s.updateGauge(metrics); err != nil {
 			return err
 		}
 	case model.Counter:
-		if err := s.updateCounter(ctx, metrics); err != nil {
+		if err := s.updateCounter(metrics); err != nil {
 			return err
 		}
 	}
@@ -65,14 +64,14 @@ func (s *MetricsService) Save(ctx context.Context, metrics model.Metrics) error 
 	return nil
 }
 
-func (s *MetricsService) updateGauge(ctx context.Context, metrics model.Metrics) error {
-	existMetric, err := s.metricsRepository.Get(ctx, metrics.MType, metrics.Name)
+func (s *MetricsService) updateGauge(metrics model.Metrics) error {
+	existMetric, err := s.metricsRepository.Get(metrics.MType, metrics.Name)
 	if err != nil {
-		if err := s.metricsRepository.Add(ctx, metrics); err != nil {
+		if err := s.metricsRepository.Add(metrics); err != nil {
 			return err
 		}
 	} else {
-		if err := s.metricsRepository.Update(ctx, *metrics.Value, existMetric.ID); err != nil {
+		if err := s.metricsRepository.Update(*metrics.Value, existMetric.ID); err != nil {
 			return fmt.Errorf("repo SaveMetric: %w", err)
 		}
 	}
@@ -80,16 +79,16 @@ func (s *MetricsService) updateGauge(ctx context.Context, metrics model.Metrics)
 	return nil
 }
 
-func (s *MetricsService) updateCounter(ctx context.Context, metrics model.Metrics) error {
-	existMetric, err := s.metricsRepository.Get(ctx, metrics.MType, metrics.Name)
+func (s *MetricsService) updateCounter(metrics model.Metrics) error {
+	existMetric, err := s.metricsRepository.Get(metrics.MType, metrics.Name)
 	if err != nil {
-		if err := s.metricsRepository.Add(ctx, metrics); err != nil {
+		if err := s.metricsRepository.Add(metrics); err != nil {
 			return err
 		}
 	} else {
 		newValue := *metrics.Value + (*existMetric.Value)
 
-		if err := s.metricsRepository.Update(ctx, newValue, existMetric.ID); err != nil {
+		if err := s.metricsRepository.Update(newValue, existMetric.ID); err != nil {
 			return fmt.Errorf("repo SaveMetric: %w", err)
 		}
 	}
