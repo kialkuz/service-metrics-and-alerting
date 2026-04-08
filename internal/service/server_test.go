@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"math/rand"
 	"testing"
+	"time"
 
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db/mocks"
 	"kialkuz/service-metrics-and-alerting/internal/model"
@@ -23,15 +25,17 @@ func TestAddMetricSuccess(t *testing.T) {
 	metricName := "test_name"
 	metricValue := rand.Float64()
 
-	mockRepo.EXPECT().Get(metricType, metricName).Return(nil, errors.ErrNotFound)
-	mockRepo.EXPECT().Add(gomock.Any()).Return(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	mockRepo.EXPECT().Get(ctx, metricType, metricName).Return(nil, errors.ErrNotFound)
+	mockRepo.EXPECT().Add(ctx, gomock.Any()).Return(nil)
 
 	modelMetrics := model.Metrics{
 		MType: model.Counter,
 		Name:  metricName,
 		Value: &metricValue,
 	}
-	err := service.Save(modelMetrics)
+	err := service.Save(ctx, modelMetrics)
 
 	assert.NoError(t, err)
 }
@@ -50,21 +54,23 @@ func TestUpdateMetricSuccess(t *testing.T) {
 	newMetricValue := rand.Float64()
 
 	modelMetrics := model.Metrics{
-		ID:    "1",
+		ID:    1,
 		MType: model.Counter,
 		Name:  metricName,
 		Value: &newMetricValue,
 	}
 
-	mockRepo.EXPECT().Get(metricType, metricName).Return(&model.Metrics{
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	mockRepo.EXPECT().Get(ctx, metricType, metricName).Return(&model.Metrics{
 		ID:    modelMetrics.ID,
 		MType: modelMetrics.MType,
 		Name:  modelMetrics.Name,
 		Value: &currentMetricValue,
 	}, nil)
-	mockRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+	mockRepo.EXPECT().Update(ctx, gomock.Any(), gomock.Any()).Return(nil)
 
-	err := service.Save(modelMetrics)
+	err := service.Save(ctx, modelMetrics)
 
 	assert.NoError(t, err)
 }

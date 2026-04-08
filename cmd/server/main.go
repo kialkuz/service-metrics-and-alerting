@@ -7,10 +7,9 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/handler"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db"
-	"kialkuz/service-metrics-and-alerting/internal/router"
+	"kialkuz/service-metrics-and-alerting/internal/server"
 	"kialkuz/service-metrics-and-alerting/internal/service"
 	"log"
-	"net/http"
 )
 
 const (
@@ -37,10 +36,10 @@ func main() {
 	services := service.NewMetricsService(storage)
 	handler := handler.NewMetricsHandler(services)
 
-	router := router.Init(handler)
-
 	log.Println("Server running on port ", appConfigData.ServerPort)
-	if err := http.ListenAndServe(":"+appConfigData.ServerPort, router); err != nil {
-		log.Fatal("Failed to start server ", err)
+	newServer := server.NewServer(handler, appConfigData.ServerPort)
+	err = newServer.ListenAndServe()
+	if err != nil {
+		log.Fatal(err.Error())
 	}
 }

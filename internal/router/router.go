@@ -7,7 +7,7 @@ import (
 )
 
 func Init(handler *handler.MetricsHandler) *gin.Engine {
-	router := gin.Default()
+	router := gin.New()
 	router.LoadHTMLGlob("templates/*")
 	router.POST("/update/:type/:name/:value", handler.AddHandler)
 	router.GET("/value/:type/:name", handler.GetMetricHandler)

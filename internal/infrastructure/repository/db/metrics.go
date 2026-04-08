@@ -1,25 +1,27 @@
 package db
 
 import (
-	"database/sql"
+	"context"
 	"errors"
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
 	"log"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 //go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
 type MetricsRepository interface {
-	Add(metrics model.Metrics) error
-	Update(value float64, id int) error
-	Get(metricType, name string) (*model.Metrics, error)
-	GetList() ([]model.Metrics, error)
+	Add(ctx context.Context, metrics model.Metrics) error
+	Update(ctx context.Context, value float64, id int) error
+	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
+	GetList(ctx context.Context) ([]model.Metrics, error)
 	Close()
 }
 
 type MemStorage struct {
-	db   *sql.DB
+	db   *pgxpool.Pool
 	list []model.Metrics
 }
 
@@ -27,8 +29,8 @@ func (r *MemStorage) Close() {
 	r.db.Close()
 }
 
-func (r *MemStorage) Add(metrics model.Metrics) error {
-	_, err := r.db.Exec(`INSERT INTO metrics (type, name, value) VALUES ($1, $2, $3)`,
+func (r *MemStorage) Add(ctx context.Context, metrics model.Metrics) error {
+	_, err := r.db.Exec(ctx, `INSERT INTO metrics (type, name, value) VALUES ($1, $2, $3)`,
 		metrics.MType,
 		metrics.Name,
 		*metrics.Value,
@@ -40,17 +42,17 @@ func (r *MemStorage) Add(metrics model.Metrics) error {
 	return nil
 }
 
-func (r *MemStorage) Update(value float64, id int) error {
-	_, err := r.db.Exec(`UPDATE metrics SET value = $1 WHERE id = $2`, value, id)
+func (r *MemStorage) Update(ctx context.Context, value float64, id int) error {
+	_, err := r.db.Exec(ctx, `UPDATE metrics SET value = $1 WHERE id = $2`, value, id)
 	if err != nil {
 		return fmt.Errorf("error update metrics: %w", err)
 	}
 	return nil
 }
 
-func (r *MemStorage) Get(metricType, name string) (*model.Metrics, error) {
+func (r *MemStorage) Get(ctx context.Context, metricType, name string) (*model.Metrics, error) {
 	var metrics model.Metrics
-	row := r.db.QueryRow(`SELECT id, type, name, value FROM metrics WHERE type=$1 AND name=$2`, metricType, name)
+	row := r.db.QueryRow(ctx, `SELECT id, type, name, value FROM metrics WHERE type=$1 AND name=$2`, metricType, name)
 	err := row.Scan(&metrics.ID, &metrics.MType, &metrics.Name, &metrics.Value)
 	if err != nil {
 		log.Println(err)
@@ -59,9 +61,9 @@ func (r *MemStorage) Get(metricType, name string) (*model.Metrics, error) {
 	return &metrics, nil
 }
 
-func (r *MemStorage) GetList() ([]model.Metrics, error) {
+func (r *MemStorage) GetList(ctx context.Context) ([]model.Metrics, error) {
 	var metrics []model.Metrics
-	rows, err := r.db.Query(`SELECT id, type, name, value FROM metrics`)
+	rows, err := r.db.Query(ctx, `SELECT id, type, name, value FROM metrics`)
 	if err != nil {
 		return nil, err
 	}

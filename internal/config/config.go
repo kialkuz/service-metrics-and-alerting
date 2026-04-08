@@ -7,8 +7,6 @@ import (
 
 const (
 	dbType = "postgres"
-	host   = "localhost"
-	port   = "8080"
 )
 
 type Config struct {

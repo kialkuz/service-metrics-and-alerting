@@ -1,22 +1,26 @@
 package db
 
 import (
-	"database/sql"
+	"context"
 	"log"
+	"time"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 
 	_ "github.com/lib/pq"
 )
 
 func NewStorage(dbType string, databaseURI string) (MetricsRepository, error) {
-	db, err := sql.Open(dbType, databaseURI)
+	db, err := pgxpool.Connect(context.Background(), databaseURI)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = db.Exec(`
-		CREATE SEQUENCE IF NOT EXISTS users_id_seq;
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err = db.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS public.metrics (
-			id int4 DEFAULT nextval('users_id_seq'::regclass) NOT NULL,
+			id SERIAL NOT NULL,
 			"type" varchar(50) NOT NULL,
 			"name" varchar(50) NOT NULL,
 			value float8 NOT NULL,

@@ -1,6 +1,9 @@
 package db
 
-import "kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
+import (
+	"fmt"
+	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
+)
 
 const (
 	port     = "5432"
@@ -23,10 +26,11 @@ func NewConfig() *Config {
 }
 
 func getDatabaseURI() string {
-	return env.GetEnv("USER", user) +
-		":" + env.GetEnv("PASSWORD", password) +
-		"@" + env.GetEnv("HOST", host) +
-		":" + env.GetEnv("PORT", port) +
-		"/" + env.GetEnv("DB_NAME", dbName) +
-		"?sslmode=disable"
+	return fmt.Sprintf("%s:%s@%s:%s/%s?sslmode=disable",
+		env.GetEnv("USER", user),
+		env.GetEnv("PASSWORD", password),
+		env.GetEnv("HOST", host),
+		env.GetEnv("PORT", port),
+		env.GetEnv("DB_NAME", dbName),
+	)
 }
