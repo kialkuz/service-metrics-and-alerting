@@ -26,6 +26,14 @@ func NewConfig() *Config {
 }
 
 func getDatabaseURI() string {
+<<<<<<< iter3
+	return env.GetEnv("USER", user) +
+		":" + env.GetEnv("PASSWORD", password) +
+		"@" + env.GetEnv("HOST", host) +
+		":" + env.GetEnv("PORT", port) +
+		"/" + env.GetEnv("DB_NAME", dbName) +
+		"?sslmode=disable"
+=======
 	return fmt.Sprintf("%s:%s@%s:%s/%s?sslmode=disable",
 		env.GetEnv("USER", user),
 		env.GetEnv("PASSWORD", password),
@@ -33,4 +41,5 @@ func getDatabaseURI() string {
 		env.GetEnv("PORT", port),
 		env.GetEnv("DB_NAME", dbName),
 	)
+>>>>>>> v2
 }
