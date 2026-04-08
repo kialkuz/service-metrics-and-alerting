@@ -10,6 +10,7 @@
 package mocks
 
 import (
+	context "context"
 	model "kialkuz/service-metrics-and-alerting/internal/model"
 	reflect "reflect"
 
@@ -41,17 +42,17 @@ func (m *MockMetricsRepository) EXPECT() *MockMetricsRepositoryMockRecorder {
 }
 
 // Add mocks base method.
-func (m *MockMetricsRepository) Add(metrics model.Metrics) error {
+func (m *MockMetricsRepository) Add(ctx context.Context, metrics model.Metrics) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Add", metrics)
+	ret := m.ctrl.Call(m, "Add", ctx, metrics)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Add indicates an expected call of Add.
-func (mr *MockMetricsRepositoryMockRecorder) Add(metrics any) *MockMetricsRepositoryAddCall {
+func (mr *MockMetricsRepositoryMockRecorder) Add(ctx, metrics any) *MockMetricsRepositoryAddCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMetricsRepository)(nil).Add), metrics)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMetricsRepository)(nil).Add), ctx, metrics)
 	return &MockMetricsRepositoryAddCall{Call: call}
 }
 
@@ -67,13 +68,13 @@ func (c *MockMetricsRepositoryAddCall) Return(arg0 error) *MockMetricsRepository
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMetricsRepositoryAddCall) Do(f func(model.Metrics) error) *MockMetricsRepositoryAddCall {
+func (c *MockMetricsRepositoryAddCall) Do(f func(context.Context, model.Metrics) error) *MockMetricsRepositoryAddCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMetricsRepositoryAddCall) DoAndReturn(f func(model.Metrics) error) *MockMetricsRepositoryAddCall {
+func (c *MockMetricsRepositoryAddCall) DoAndReturn(f func(context.Context, model.Metrics) error) *MockMetricsRepositoryAddCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -115,18 +116,18 @@ func (c *MockMetricsRepositoryCloseCall) DoAndReturn(f func()) *MockMetricsRepos
 }
 
 // Get mocks base method.
-func (m *MockMetricsRepository) Get(metricType, name string) (*model.Metrics, error) {
+func (m *MockMetricsRepository) Get(ctx context.Context, metricType, name string) (*model.Metrics, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", metricType, name)
+	ret := m.ctrl.Call(m, "Get", ctx, metricType, name)
 	ret0, _ := ret[0].(*model.Metrics)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockMetricsRepositoryMockRecorder) Get(metricType, name any) *MockMetricsRepositoryGetCall {
+func (mr *MockMetricsRepositoryMockRecorder) Get(ctx, metricType, name any) *MockMetricsRepositoryGetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockMetricsRepository)(nil).Get), metricType, name)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockMetricsRepository)(nil).Get), ctx, metricType, name)
 	return &MockMetricsRepositoryGetCall{Call: call}
 }
 
@@ -142,30 +143,30 @@ func (c *MockMetricsRepositoryGetCall) Return(arg0 *model.Metrics, arg1 error) *
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMetricsRepositoryGetCall) Do(f func(string, string) (*model.Metrics, error)) *MockMetricsRepositoryGetCall {
+func (c *MockMetricsRepositoryGetCall) Do(f func(context.Context, string, string) (*model.Metrics, error)) *MockMetricsRepositoryGetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMetricsRepositoryGetCall) DoAndReturn(f func(string, string) (*model.Metrics, error)) *MockMetricsRepositoryGetCall {
+func (c *MockMetricsRepositoryGetCall) DoAndReturn(f func(context.Context, string, string) (*model.Metrics, error)) *MockMetricsRepositoryGetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetList mocks base method.
-func (m *MockMetricsRepository) GetList() ([]model.Metrics, error) {
+func (m *MockMetricsRepository) GetList(ctx context.Context) ([]model.Metrics, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetList")
+	ret := m.ctrl.Call(m, "GetList", ctx)
 	ret0, _ := ret[0].([]model.Metrics)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetList indicates an expected call of GetList.
-func (mr *MockMetricsRepositoryMockRecorder) GetList() *MockMetricsRepositoryGetListCall {
+func (mr *MockMetricsRepositoryMockRecorder) GetList(ctx any) *MockMetricsRepositoryGetListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetList", reflect.TypeOf((*MockMetricsRepository)(nil).GetList))
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetList", reflect.TypeOf((*MockMetricsRepository)(nil).GetList), ctx)
 	return &MockMetricsRepositoryGetListCall{Call: call}
 }
 
@@ -181,29 +182,29 @@ func (c *MockMetricsRepositoryGetListCall) Return(arg0 []model.Metrics, arg1 err
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMetricsRepositoryGetListCall) Do(f func() ([]model.Metrics, error)) *MockMetricsRepositoryGetListCall {
+func (c *MockMetricsRepositoryGetListCall) Do(f func(context.Context) ([]model.Metrics, error)) *MockMetricsRepositoryGetListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMetricsRepositoryGetListCall) DoAndReturn(f func() ([]model.Metrics, error)) *MockMetricsRepositoryGetListCall {
+func (c *MockMetricsRepositoryGetListCall) DoAndReturn(f func(context.Context) ([]model.Metrics, error)) *MockMetricsRepositoryGetListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Update mocks base method.
-func (m *MockMetricsRepository) Update(value float64, id int) error {
+func (m *MockMetricsRepository) Update(ctx context.Context, value float64, id int) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", value, id)
+	ret := m.ctrl.Call(m, "Update", ctx, value, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockMetricsRepositoryMockRecorder) Update(value, id any) *MockMetricsRepositoryUpdateCall {
+func (mr *MockMetricsRepositoryMockRecorder) Update(ctx, value, id any) *MockMetricsRepositoryUpdateCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMetricsRepository)(nil).Update), value, id)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMetricsRepository)(nil).Update), ctx, value, id)
 	return &MockMetricsRepositoryUpdateCall{Call: call}
 }
 
@@ -219,13 +220,13 @@ func (c *MockMetricsRepositoryUpdateCall) Return(arg0 error) *MockMetricsReposit
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMetricsRepositoryUpdateCall) Do(f func(float64, int) error) *MockMetricsRepositoryUpdateCall {
+func (c *MockMetricsRepositoryUpdateCall) Do(f func(context.Context, float64, int) error) *MockMetricsRepositoryUpdateCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMetricsRepositoryUpdateCall) DoAndReturn(f func(float64, int) error) *MockMetricsRepositoryUpdateCall {
+func (c *MockMetricsRepositoryUpdateCall) DoAndReturn(f func(context.Context, float64, int) error) *MockMetricsRepositoryUpdateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

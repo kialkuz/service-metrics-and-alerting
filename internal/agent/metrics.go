@@ -7,11 +7,6 @@ import (
 	"time"
 )
 
-const (
-	pollInterval   = 1
-	reportInterval = 1
-)
-
 type MetricsAgent struct {
 	metricsService service.MetricsAgentService
 }
@@ -22,13 +17,13 @@ func NewMetricsAgent(metricsService service.MetricsAgentService) *MetricsAgent {
 	}
 }
 
-func (a *MetricsAgent) Collect() {
+func (a *MetricsAgent) Collect(reportInterval, pollInterval int) {
 	now := time.Now()
 
 	for {
 		metrics := a.metricsService.Collect()
 
-		time.Sleep(pollInterval * time.Second)
+		time.Sleep(time.Duration(pollInterval) * time.Second)
 		if time.Now().After(now.Add(time.Duration(reportInterval) * time.Second)) {
 			for metricType, metricList := range metrics {
 				for name, value := range metricList {
