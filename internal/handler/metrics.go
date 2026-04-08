@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -54,7 +56,9 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 	}
 	metrics.Value = &value
 
-	err = h.metricsService.Save(metrics)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
+	defer cancel()
+	err = h.metricsService.Save(ctx, metrics)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Metric not saved"})
@@ -74,7 +78,9 @@ func (h *MetricsHandler) GetMetricHandler(c *gin.Context) {
 		return
 	}
 
-	metric, err := h.metricsService.Get(metricType, name)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
+	defer cancel()
+	metric, err := h.metricsService.Get(ctx, metricType, name)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -84,7 +90,9 @@ func (h *MetricsHandler) GetMetricHandler(c *gin.Context) {
 }
 
 func (h *MetricsHandler) GetListHandler(c *gin.Context) {
-	items, err := h.metricsService.GetList()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
+	defer cancel()
+	items, err := h.metricsService.GetList(ctx)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
