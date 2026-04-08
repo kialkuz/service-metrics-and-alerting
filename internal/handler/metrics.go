@@ -33,10 +33,6 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 
 	httpCode, err := h.check(metricType, name)
 	if err != nil {
-<<<<<<< iter3
-		log.Println("11111111111111111")
-=======
->>>>>>> v2
 		log.Println(err)
 		c.JSON(httpCode, gin.H{"error": err.Error()})
 		return
@@ -44,10 +40,6 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 
 	newValue := c.Param("value")
 	if newValue == "" {
-<<<<<<< iter3
-		log.Println("2222222222222222222222")
-=======
->>>>>>> v2
 		log.Println(err)
 		c.JSON(http.StatusBadRequest, errors.New("empty metric value"))
 		return
@@ -58,26 +50,16 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 	metrics.Name = name
 	value, err := strconv.ParseFloat(newValue, 64)
 	if err != nil {
-<<<<<<< iter3
-		log.Println("3333333333333333333333333")
-=======
->>>>>>> v2
 		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect value type"})
 		return
 	}
 	metrics.Value = &value
 
-<<<<<<< iter3
-	err = h.metricsService.Save(metrics)
-	if err != nil {
-		log.Println("4444444444444444444444")
-=======
 	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
 	defer cancel()
 	err = h.metricsService.Save(ctx, metrics)
 	if err != nil {
->>>>>>> v2
 		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Metric not saved"})
 		return
