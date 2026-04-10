@@ -1,22 +1,11 @@
-package config
+package server
 
 import (
-	"flag"
 	"strings"
 
 	"kialkuz/service-metrics-and-alerting/internal/config/db"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
 )
-
-const (
-	defaultDbType        = "postgres"
-	defaultServerAddress = "localhost:8080"
-)
-
-type incomingParams struct {
-	dbType  string
-	address string
-}
 
 type Config struct {
 	DBType     string
@@ -28,7 +17,7 @@ type Config struct {
 
 func NewConfig() (*Config, error) {
 	env.Load()
-	incomingParams, err := getIncomingParams()
+	incomingParams, err := GetIncomingParams()
 	if err != nil {
 		return nil, err
 	}
@@ -42,23 +31,4 @@ func NewConfig() (*Config, error) {
 		URL:        "http://" + addressParts[0] + ":" + addressParts[1],
 		DB:         *db.NewConfig(),
 	}, nil
-}
-
-func getIncomingParams() (*incomingParams, error) {
-	var cfg incomingParams
-
-	cfg.dbType = env.GetEnv("DB_TYPE", "")
-	if cfg.dbType == "" {
-		cfg.dbType = defaultDbType
-	}
-
-	cfg.address = env.GetEnv("ADDRESS", "")
-	if cfg.address == "" {
-		address := flag.String("a", defaultServerAddress, "server address")
-		flag.Parse()
-
-		cfg.address = *address
-	}
-
-	return &cfg, nil
 }
