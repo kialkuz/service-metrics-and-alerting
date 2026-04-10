@@ -1,32 +1,21 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	appConfig "kialkuz/service-metrics-and-alerting/internal/config"
-	dbConfig "kialkuz/service-metrics-and-alerting/internal/config/db"
+	appConfig "kialkuz/service-metrics-and-alerting/internal/config/server"
 	"kialkuz/service-metrics-and-alerting/internal/handler"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db"
 	"kialkuz/service-metrics-and-alerting/internal/server"
-	"kialkuz/service-metrics-and-alerting/internal/service"
+	service "kialkuz/service-metrics-and-alerting/internal/service/server"
 	"log"
-	"os"
 )
 
-const defaultServerAddress = "localhost:8080"
-
 func main() {
-	serverAddress := os.Getenv("ADDRESS")
-	if serverAddress == "" {
-		address := flag.String("a", defaultServerAddress, "server address")
-		flag.Parse()
-		serverAddress = *address
+	appConfigData, err := appConfig.NewConfig()
+	if err != nil {
+		log.Fatal(err)
 	}
-	fmt.Println(serverAddress)
 
-	appConfigData := appConfig.NewConfig(serverAddress)
-	dbConfigData := dbConfig.NewConfig()
-	storage, err := db.NewStorage(appConfigData.DBType, dbConfigData.DatabaseURI)
+	storage, err := db.NewStorage(appConfigData.DBType, appConfigData.DB.DatabaseURI)
 	if err != nil {
 		log.Fatal(err)
 	}

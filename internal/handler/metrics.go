@@ -5,7 +5,7 @@ import (
 	"errors"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
-	"kialkuz/service-metrics-and-alerting/internal/service"
+	service "kialkuz/service-metrics-and-alerting/internal/service/server"
 	"log"
 	"net/http"
 	"slices"

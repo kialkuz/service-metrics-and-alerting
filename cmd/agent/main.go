@@ -4,19 +4,17 @@ import (
 	"log"
 
 	"kialkuz/service-metrics-and-alerting/internal/agent"
-	appConfig "kialkuz/service-metrics-and-alerting/internal/config"
-	"kialkuz/service-metrics-and-alerting/internal/service"
+	appConfig "kialkuz/service-metrics-and-alerting/internal/config/agent"
+	service "kialkuz/service-metrics-and-alerting/internal/service/agent"
 )
 
 func main() {
-	arguments, err := service.GetArguments()
+	config, err := appConfig.NewConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	appConfig.NewConfig(arguments.Address)
-	services := service.NewMetricsService(nil)
+	services := service.NewMetricsService(config.URL)
 	agent := agent.NewMetricsAgent(services)
 
-	agent.Collect(arguments.ReportInterval, arguments.PollInterval)
+	agent.Collect(config.ReportInterval, config.PollInterval)
 }

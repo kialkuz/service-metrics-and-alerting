@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"kialkuz/service-metrics-and-alerting/internal/config"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"math/rand"
@@ -125,16 +124,4 @@ func (s *MetricsService) collectMemStats() map[string]float64 {
 	}
 
 	return statsFields
-}
-
-func (s *MetricsService) Send(metricType string, name string, value float64) (*http.Response, error) {
-	query := fmt.Sprintf("/update/%s/%s/%f", metricType, name, value)
-	response, err := http.Post(config.GetURL()+query, "text/plain", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	defer response.Body.Close()
-
-	return response, nil
 }

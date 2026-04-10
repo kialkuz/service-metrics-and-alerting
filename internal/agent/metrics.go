@@ -2,7 +2,7 @@ package agent
 
 import (
 	"fmt"
-	"kialkuz/service-metrics-and-alerting/internal/service"
+	service "kialkuz/service-metrics-and-alerting/internal/service/agent"
 	"log"
 	"time"
 )

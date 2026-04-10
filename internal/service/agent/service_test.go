@@ -3,7 +3,6 @@ package service
 import (
 	"testing"
 
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db/mocks"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 
 	"github.com/stretchr/testify/assert"
@@ -14,8 +13,7 @@ func TestCollectMetrics(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockMetricsRepository(ctrl)
-	service := NewMetricsService(mockRepo)
+	service := NewMetricsService("test_url")
 
 	metrics := service.Collect()
 

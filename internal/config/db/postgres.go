@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	port     = "5432"
-	user     = "user"
-	password = "password"
-	host     = "localhost"
-	dbName   = "default_name"
+	defaultUser     = "user"
+	defaultPassword = "password"
+	defaultHost     = "localhost"
+	defaultPort     = "5432"
+	defaultDBName   = "default_name"
 )
 
 type Config struct {
@@ -18,8 +18,6 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	env.Load()
-
 	return &Config{
 		DatabaseURI: "postgres://" + getDatabaseURI(),
 	}
@@ -27,10 +25,10 @@ func NewConfig() *Config {
 
 func getDatabaseURI() string {
 	return fmt.Sprintf("%s:%s@%s:%s/%s?sslmode=disable",
-		env.GetEnv("USER", user),
-		env.GetEnv("PASSWORD", password),
-		env.GetEnv("HOST", host),
-		env.GetEnv("PORT", port),
-		env.GetEnv("DB_NAME", dbName),
+		env.GetEnv("USER", defaultUser),
+		env.GetEnv("PASSWORD", defaultPassword),
+		env.GetEnv("HOST", defaultHost),
+		env.GetEnv("PORT", defaultPort),
+		env.GetEnv("DB_NAME", defaultDBName),
 	)
 }
