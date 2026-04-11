@@ -12,12 +12,12 @@ import (
 func main() {
 	appConfigData, err := appConfig.NewConfig()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	storage, err := db.NewStorage(appConfigData.DBType, appConfigData.DB.DatabaseURI)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer storage.Close()
 
@@ -28,6 +28,6 @@ func main() {
 	newServer := server.NewServer(handler, appConfigData.ServerPort)
 	err = newServer.ListenAndServe()
 	if err != nil {
-		log.Fatal(err.Error())
+		panic(err)
 	}
 }
