@@ -12,7 +12,9 @@ func Init(handler *handler.MetricsHandler) *gin.Engine {
 	router.LoadHTMLGlob("templates/*")
 	router.Use(middleware.WithLogging)
 	router.POST("/update/:type/:name/:value", handler.AddHandler)
-	router.GET("/value/:type/:name", handler.GetMetricHandler)
+	router.POST("/update/", handler.UpdateHandler)
+	router.POST("/value/", handler.GetMetricHandler)
+	router.GET("/value/:type/:name", handler.GetMetricValueHandler)
 	router.GET("/", handler.GetListHandler)
 
 	return router

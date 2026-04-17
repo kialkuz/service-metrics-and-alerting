@@ -1,6 +1,7 @@
 package env
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/joho/godotenv"
@@ -13,7 +14,8 @@ func Load() {
 
 	envMap, err = godotenv.Read()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal(err)
+		fmt.Println("Error loading .env file")
 	}
 }
 

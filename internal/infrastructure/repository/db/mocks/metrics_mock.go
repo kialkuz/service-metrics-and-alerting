@@ -42,17 +42,17 @@ func (m *MockMetricsRepository) EXPECT() *MockMetricsRepositoryMockRecorder {
 }
 
 // Add mocks base method.
-func (m *MockMetricsRepository) Add(ctx context.Context, metrics model.Metrics) error {
+func (m *MockMetricsRepository) Add(ctx context.Context, typeValue, name string, value float64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Add", ctx, metrics)
+	ret := m.ctrl.Call(m, "Add", ctx, typeValue, name, value)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Add indicates an expected call of Add.
-func (mr *MockMetricsRepositoryMockRecorder) Add(ctx, metrics any) *MockMetricsRepositoryAddCall {
+func (mr *MockMetricsRepositoryMockRecorder) Add(ctx, typeValue, name, value any) *MockMetricsRepositoryAddCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMetricsRepository)(nil).Add), ctx, metrics)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMetricsRepository)(nil).Add), ctx, typeValue, name, value)
 	return &MockMetricsRepositoryAddCall{Call: call}
 }
 
@@ -68,13 +68,13 @@ func (c *MockMetricsRepositoryAddCall) Return(arg0 error) *MockMetricsRepository
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMetricsRepositoryAddCall) Do(f func(context.Context, model.Metrics) error) *MockMetricsRepositoryAddCall {
+func (c *MockMetricsRepositoryAddCall) Do(f func(context.Context, string, string, float64) error) *MockMetricsRepositoryAddCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMetricsRepositoryAddCall) DoAndReturn(f func(context.Context, model.Metrics) error) *MockMetricsRepositoryAddCall {
+func (c *MockMetricsRepositoryAddCall) DoAndReturn(f func(context.Context, string, string, float64) error) *MockMetricsRepositoryAddCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -193,40 +193,40 @@ func (c *MockMetricsRepositoryGetListCall) DoAndReturn(f func(context.Context) (
 	return c
 }
 
-// Update mocks base method.
-func (m *MockMetricsRepository) Update(ctx context.Context, value float64, id int) error {
+// UpdateByTypeAndName mocks base method.
+func (m *MockMetricsRepository) UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, value, id)
+	ret := m.ctrl.Call(m, "UpdateByTypeAndName", ctx, value, metricType, name)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Update indicates an expected call of Update.
-func (mr *MockMetricsRepositoryMockRecorder) Update(ctx, value, id any) *MockMetricsRepositoryUpdateCall {
+// UpdateByTypeAndName indicates an expected call of UpdateByTypeAndName.
+func (mr *MockMetricsRepositoryMockRecorder) UpdateByTypeAndName(ctx, value, metricType, name any) *MockMetricsRepositoryUpdateByTypeAndNameCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMetricsRepository)(nil).Update), ctx, value, id)
-	return &MockMetricsRepositoryUpdateCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateByTypeAndName", reflect.TypeOf((*MockMetricsRepository)(nil).UpdateByTypeAndName), ctx, value, metricType, name)
+	return &MockMetricsRepositoryUpdateByTypeAndNameCall{Call: call}
 }
 
-// MockMetricsRepositoryUpdateCall wrap *gomock.Call
-type MockMetricsRepositoryUpdateCall struct {
+// MockMetricsRepositoryUpdateByTypeAndNameCall wrap *gomock.Call
+type MockMetricsRepositoryUpdateByTypeAndNameCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMetricsRepositoryUpdateCall) Return(arg0 error) *MockMetricsRepositoryUpdateCall {
+func (c *MockMetricsRepositoryUpdateByTypeAndNameCall) Return(arg0 error) *MockMetricsRepositoryUpdateByTypeAndNameCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMetricsRepositoryUpdateCall) Do(f func(context.Context, float64, int) error) *MockMetricsRepositoryUpdateCall {
+func (c *MockMetricsRepositoryUpdateByTypeAndNameCall) Do(f func(context.Context, float64, string, string) error) *MockMetricsRepositoryUpdateByTypeAndNameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMetricsRepositoryUpdateCall) DoAndReturn(f func(context.Context, float64, int) error) *MockMetricsRepositoryUpdateCall {
+func (c *MockMetricsRepositoryUpdateByTypeAndNameCall) DoAndReturn(f func(context.Context, float64, string, string) error) *MockMetricsRepositoryUpdateByTypeAndNameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

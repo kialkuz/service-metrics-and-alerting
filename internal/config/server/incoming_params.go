@@ -2,9 +2,10 @@ package server
 
 import (
 	"flag"
-	"os"
+	"fmt"
+	"log"
 
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
+	"github.com/caarlos0/env/v6"
 )
 
 const (
@@ -13,25 +14,24 @@ const (
 )
 
 type incomingParams struct {
-	dbType  string
-	address string
+	DBType  string `env:"DB_TYPE"`
+	Address string `env:"ADDRESS"`
 }
 
 func GetIncomingParams() (*incomingParams, error) {
-	var cfg incomingParams
-
-	cfg.dbType = env.GetEnv("DB_TYPE", "")
-	if cfg.dbType == "" {
-		cfg.dbType = defaultDBType
+	cfg := &incomingParams{
+		DBType:  defaultDBType,
+		Address: defaultServerAddress,
 	}
 
-	cfg.address = os.Getenv("ADDRESS")
-	if cfg.address == "" {
-		address := flag.String("a", defaultServerAddress, "server address")
-		flag.Parse()
+	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server address")
+	flag.Parse()
 
-		cfg.address = *address
+	err := env.Parse(cfg)
+	if err != nil {
+		log.Printf("Can't parse config from os: %s ", err)
+		return nil, fmt.Errorf("can't parse config from os: %s ", err)
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }

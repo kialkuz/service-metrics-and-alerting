@@ -23,7 +23,8 @@ func NewStorage(dbType string, databaseURI string) (MetricsRepository, error) {
 			id SERIAL NOT NULL,
 			"type" varchar(50) NOT NULL,
 			"name" varchar(50) NOT NULL,
-			value float8 NOT NULL,
+			delta int8,
+			value float8,
 			CONSTRAINT users_pkey PRIMARY KEY (id)
 		);
 	`)

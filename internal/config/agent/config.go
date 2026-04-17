@@ -7,14 +7,14 @@ type Config struct {
 }
 
 func NewConfig() (*Config, error) {
-	incomingParams, err := GetIncomingParams()
+	config, err := GetIncomingParams()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Config{
-		ReportInterval: incomingParams.ReportInterval,
-		PollInterval:   incomingParams.PollInterval,
-		URL:            "http://" + incomingParams.Address,
+		ReportInterval: config.ReportInterval,
+		PollInterval:   config.PollInterval,
+		URL:            "http://" + config.Address,
 	}, nil
 }

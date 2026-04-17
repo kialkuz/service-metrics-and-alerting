@@ -11,24 +11,23 @@ type Config struct {
 	DBType     string
 	ServerHost string
 	ServerPort string
-	URL        string
 	DB         db.Config
 }
 
 func NewConfig() (*Config, error) {
 	env.Load()
-	incomingParams, err := GetIncomingParams()
+
+	config, err := GetIncomingParams()
 	if err != nil {
 		return nil, err
 	}
 
-	addressParts := strings.Split(incomingParams.address, ":")
+	addressParts := strings.Split(config.Address, ":")
 
 	return &Config{
-		DBType:     incomingParams.dbType,
+		DBType:     config.DBType,
 		ServerHost: addressParts[0],
 		ServerPort: addressParts[1],
-		URL:        "http://" + addressParts[0] + ":" + addressParts[1],
 		DB:         *db.NewConfig(),
 	}, nil
 }

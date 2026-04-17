@@ -23,17 +23,17 @@ func TestAddMetricSuccess(t *testing.T) {
 
 	metricType := model.Counter
 	metricName := "test_name"
-	metricValue := rand.Float64()
+	metricValue := rand.Int63()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	mockRepo.EXPECT().Get(ctx, metricType, metricName).Return(nil, errors.ErrNotFound)
-	mockRepo.EXPECT().Add(ctx, gomock.Any()).Return(nil)
+	mockRepo.EXPECT().Add(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 	modelMetrics := model.Metrics{
 		MType: model.Counter,
 		Name:  metricName,
-		Value: &metricValue,
+		Delta: &metricValue,
 	}
 	err := service.Save(ctx, modelMetrics)
 
@@ -47,17 +47,17 @@ func TestUpdateMetricSuccess(t *testing.T) {
 	mockRepo := mocks.NewMockMetricsRepository(ctrl)
 	service := NewMetricsService(mockRepo)
 
-	currentMetricValue := rand.Float64()
+	currentMetricValue := rand.Int63()
 
 	metricType := model.Counter
 	metricName := "test_name"
-	newMetricValue := rand.Float64()
+	newMetricValue := rand.Int63()
 
 	modelMetrics := model.Metrics{
 		ID:    1,
 		MType: model.Counter,
 		Name:  metricName,
-		Value: &newMetricValue,
+		Delta: &newMetricValue,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -66,9 +66,9 @@ func TestUpdateMetricSuccess(t *testing.T) {
 		ID:    modelMetrics.ID,
 		MType: modelMetrics.MType,
 		Name:  modelMetrics.Name,
-		Value: &currentMetricValue,
+		Delta: &currentMetricValue,
 	}, nil)
-	mockRepo.EXPECT().Update(ctx, gomock.Any(), gomock.Any()).Return(nil)
+	mockRepo.EXPECT().UpdateByTypeAndName(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 	err := service.Save(ctx, modelMetrics)
 

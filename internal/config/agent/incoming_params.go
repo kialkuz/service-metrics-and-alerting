@@ -19,29 +19,21 @@ type incomingParams struct {
 }
 
 func GetIncomingParams() (*incomingParams, error) {
-	var cfg incomingParams
-	err := env.Parse(&cfg)
+	cfg := &incomingParams{
+		Address:        defaultServerAddress,
+		ReportInterval: defaultReportInterval,
+		PollInterval:   defaultPollInterval,
+	}
+
+	flag.StringVar(&cfg.Address, "a", cfg.Address, "server address")
+	flag.IntVar(&cfg.ReportInterval, "r", cfg.ReportInterval, "report interval")
+	flag.IntVar(&cfg.PollInterval, "p", cfg.PollInterval, "poll interval")
+	flag.Parse()
+
+	err := env.Parse(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	address := flag.String("a", defaultServerAddress, "server address")
-	reportInterval := flag.Int("r", defaultReportInterval, "report interval")
-	pollInterval := flag.Int("p", defaultPollInterval, "poll interval")
-
-	flag.Parse()
-
-	if cfg.Address == "" {
-		cfg.Address = *address
-	}
-
-	if cfg.ReportInterval == 0 {
-		cfg.ReportInterval = *reportInterval
-	}
-
-	if cfg.PollInterval == 0 {
-		cfg.PollInterval = *pollInterval
-	}
-
-	return &cfg, nil
+	return cfg, nil
 }

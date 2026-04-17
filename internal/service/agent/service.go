@@ -1,8 +1,13 @@
 package service
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
+	"log"
+	"maps"
 	"math/rand/v2"
 	"net/http"
 	"reflect"
@@ -10,11 +15,13 @@ import (
 )
 
 type MetricsAgentService interface {
-	Collect() map[string]map[string]float64
-	Send(metricType string, name string, value float64) (resp *http.Response, err error)
+	CollectCounter() map[string]int64
+	CollectGauge() map[string]float64
+	Send(value dto.Metrics) (*http.Response, error)
+	SendData(metricType, name, value string) (*http.Response, error)
 }
 
-//go:generate go run go.uber.org/mock/mockgen -source=service.go -destination=mocks/metrics_mock.go -package=mocks -typed
+//go:generate go run go.uber.org/mock/mockgen -source=service.go -destination=mocks/service_mock.go -package=mocks -typed
 type MetricsService struct {
 	url string
 }
@@ -23,14 +30,21 @@ func NewMetricsService(url string) *MetricsService {
 	return &MetricsService{url: url}
 }
 
-func (s *MetricsService) Collect() map[string]map[string]float64 {
-	metrics := make(map[string]map[string]float64)
-	metrics[model.Counter] = make(map[string]float64)
-	metrics[model.Counter]["RandomValue"] = rand.Float64()
-	metrics[model.Gauge] = make(map[string]float64)
-	metrics[model.Gauge] = s.collectMemStats()
+func (s *MetricsService) CollectCounter() map[string]int64 {
+	fields := map[string]int64{
+		"PollCount": 1,
+	}
 
-	return metrics
+	return fields
+}
+
+func (s *MetricsService) CollectGauge() map[string]float64 {
+	fields := map[string]float64{
+		"RandomValue": rand.Float64(),
+	}
+	maps.Insert(fields, maps.All(s.collectMemStats()))
+
+	return fields
 }
 
 func (s *MetricsService) collectMemStats() map[string]float64 {
@@ -39,22 +53,44 @@ func (s *MetricsService) collectMemStats() map[string]float64 {
 
 	r := reflect.ValueOf(memStats)
 
-	statsFields := make(map[string]float64)
+	statsFields := make(map[string]float64, len(model.StatsFields))
 	for _, field := range model.StatsFields {
-		switch reflect.Indirect(r).FieldByName(field).Type().Name() {
-		case "uint32":
-		case "uint64":
-			statsFields[field] = float64(reflect.Indirect(r).FieldByName(field).Uint())
-		case "float64":
-			statsFields[field] = float64(reflect.Indirect(r).FieldByName(field).Float())
+		f := r.FieldByName(field)
+		if !f.IsValid() {
+			log.Printf("Поле %s не валидное", field)
+			continue // или можно залогировать
+		}
+
+		switch f.Kind() {
+		case reflect.Uint32, reflect.Uint64:
+			statsFields[field] = float64(f.Uint())
+		case reflect.Float64:
+			statsFields[field] = f.Float()
 		}
 	}
 
 	return statsFields
 }
 
-func (s *MetricsService) Send(metricType string, name string, value float64) (*http.Response, error) {
-	query := fmt.Sprintf("/update/%s/%s/%f", metricType, name, value)
+func (s *MetricsService) Send(value dto.Metrics) (*http.Response, error) {
+	jsonData, err := json.Marshal(value)
+	if err != nil {
+		fmt.Println("Error marshalling JSON:", err)
+		return nil, err
+	}
+
+	response, err := http.Post(s.url+"/update/", "application/json", bytes.NewReader(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+
+	return response, nil
+}
+
+func (s *MetricsService) SendData(metricType, name, value string) (*http.Response, error) {
+	query := fmt.Sprintf("/update/%s/%s/%s", metricType, name, value)
 	response, err := http.Post(s.url+query, "text/plain", nil)
 	if err != nil {
 		return nil, err

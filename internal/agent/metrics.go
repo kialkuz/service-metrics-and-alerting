@@ -2,6 +2,8 @@ package agent
 
 import (
 	"fmt"
+	"kialkuz/service-metrics-and-alerting/internal/dto"
+	"kialkuz/service-metrics-and-alerting/internal/model"
 	service "kialkuz/service-metrics-and-alerting/internal/service/agent"
 	"log"
 	"time"
@@ -21,20 +23,34 @@ func (a *MetricsAgent) Collect(reportInterval, pollInterval int) {
 	now := time.Now()
 
 	for {
-		metrics := a.metricsService.Collect()
-
 		time.Sleep(time.Duration(pollInterval) * time.Second)
 		if time.Now().After(now.Add(time.Duration(reportInterval) * time.Second)) {
-			for metricType, metricList := range metrics {
-				for name, value := range metricList {
-					response, err := a.metricsService.Send(metricType, name, value)
-					if err != nil {
-						log.Println(err)
-						return
-					}
-
-					fmt.Println(response.Status)
+			for fieldName, fieldValue := range a.metricsService.CollectCounter() {
+				response, err := a.metricsService.Send(dto.Metrics{
+					ID:    fieldName,
+					MType: model.Counter,
+					Delta: &fieldValue,
+				})
+				if err != nil {
+					log.Println(err)
+					continue
 				}
+
+				fmt.Println(response.Status)
+			}
+
+			for fieldName, fieldValue := range a.metricsService.CollectGauge() {
+				response, err := a.metricsService.Send(dto.Metrics{
+					ID:    fieldName,
+					MType: model.Gauge,
+					Value: &fieldValue,
+				})
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				fmt.Println(response.Status)
 			}
 
 			now = time.Now()
