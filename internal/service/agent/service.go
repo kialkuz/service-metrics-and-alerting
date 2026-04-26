@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
+	"kialkuz/service-metrics-and-alerting/internal/service/compress"
 	"log"
 	"maps"
 	"math/rand/v2"
@@ -79,7 +80,21 @@ func (s *MetricsService) Send(value dto.Metrics) (*http.Response, error) {
 		return nil, err
 	}
 
-	response, err := http.Post(s.url+"/update/", "application/json", bytes.NewReader(jsonData))
+	b, err := compress.MakeGzip(jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{}
+	request, err := http.NewRequest(http.MethodPost, s.url+"/update/", bytes.NewReader(b))
+	if err != nil {
+		panic(err)
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Add("Content-Encoding", "gzip")
+
+	response, err := client.Do(request)
 	if err != nil {
 		return nil, err
 	}

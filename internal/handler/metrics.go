@@ -209,10 +209,17 @@ func (h *MetricsHandler) GetListHandler(c *gin.Context) {
 
 	var metrics []dto.MetricView
 	for _, item := range items {
-		metrics = append(metrics, dto.MetricView{
-			Name:  item.Name,
-			Value: *item.Value,
-		})
+		if item.Delta != nil {
+			metrics = append(metrics, dto.MetricView{
+				Name:  item.Name,
+				Delta: *item.Delta,
+			})
+		} else {
+			metrics = append(metrics, dto.MetricView{
+				Name:  item.Name,
+				Value: *item.Value,
+			})
+		}
 	}
 
 	c.HTML(http.StatusOK, "metrics_list.html", gin.H{"metrics": metrics})
