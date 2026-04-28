@@ -1,4 +1,4 @@
-package service
+package server
 
 import (
 	"context"
@@ -16,10 +16,10 @@ type MetricsServerService interface {
 
 //go:generate go run go.uber.org/mock/mockgen -source=service.go -destination=mocks/service_mock.go -package=mocks -typed
 type MetricsService struct {
-	metricsRepository db.MetricsRepository
+	metricsRepository db.MetricsDBRepository
 }
 
-func NewMetricsService(metricsRepository db.MetricsRepository) *MetricsService {
+func NewMetricsService(metricsRepository db.MetricsDBRepository) *MetricsService {
 	return &MetricsService{metricsRepository: metricsRepository}
 }
 

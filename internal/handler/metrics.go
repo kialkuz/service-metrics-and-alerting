@@ -19,12 +19,17 @@ import (
 const timeout = 10
 
 type MetricsHandler struct {
-	metricsService service.MetricsServerService
+	metricsService     service.MetricsServerService
+	metricsFileService service.MetricsFileService
 }
 
-func NewMetricsHandler(metricsService service.MetricsServerService) *MetricsHandler {
+func NewMetricsHandler(
+	metricsService service.MetricsServerService,
+	metricsFileService service.MetricsFileService,
+) *MetricsHandler {
 	return &MetricsHandler{
-		metricsService: metricsService,
+		metricsService:     metricsService,
+		metricsFileService: metricsFileService,
 	}
 }
 
@@ -133,6 +138,8 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Metric not saved"})
 		return
 	}
+
+	h.metricsFileService.SetMetric(metrics.Name, metrics)
 
 	c.Status(http.StatusOK)
 }

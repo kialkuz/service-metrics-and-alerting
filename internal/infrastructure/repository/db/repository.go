@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"kialkuz/service-metrics-and-alerting/internal/model"
 	"log"
 	"time"
 
@@ -10,7 +11,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func NewStorage(dbType string, databaseURI string) (MetricsRepository, error) {
+//go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
+type MetricsDBRepository interface {
+	Add(ctx context.Context, typeValue, name string, value float64) error
+	UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error
+	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
+	GetList(ctx context.Context) ([]model.Metrics, error)
+	Close()
+}
+
+func NewDBStorage(dbType string, databaseURI string) (MetricsDBRepository, error) {
 	db, err := pgxpool.Connect(context.Background(), databaseURI)
 	if err != nil {
 		return nil, err

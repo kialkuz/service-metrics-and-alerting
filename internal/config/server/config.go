@@ -8,10 +8,13 @@ import (
 )
 
 type Config struct {
-	DBType     string
-	ServerHost string
-	ServerPort string
-	DB         db.Config
+	DBType          string
+	ServerHost      string
+	ServerPort      string
+	DB              db.Config
+	StoreInterval   int
+	FileStoragePath string
+	Restore         bool
 }
 
 func NewConfig() (*Config, error) {
@@ -25,9 +28,12 @@ func NewConfig() (*Config, error) {
 	addressParts := strings.Split(config.Address, ":")
 
 	return &Config{
-		DBType:     config.DBType,
-		ServerHost: addressParts[0],
-		ServerPort: addressParts[1],
-		DB:         *db.NewConfig(),
+		DBType:          config.DBType,
+		ServerHost:      addressParts[0],
+		ServerPort:      addressParts[1],
+		DB:              *db.NewConfig(),
+		StoreInterval:   config.StoreInterval,
+		FileStoragePath: config.FileStoragePath,
+		Restore:         config.Restore,
 	}, nil
 }

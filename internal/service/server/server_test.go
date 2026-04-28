@@ -1,4 +1,4 @@
-package service
+package server
 
 import (
 	"context"
@@ -18,7 +18,7 @@ func TestAddMetricSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockMetricsRepository(ctrl)
+	mockRepo := mocks.NewMockMetricsDBRepository(ctrl)
 	service := NewMetricsService(mockRepo)
 
 	metricType := model.Counter
@@ -44,7 +44,7 @@ func TestUpdateMetricSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockMetricsRepository(ctrl)
+	mockRepo := mocks.NewMockMetricsDBRepository(ctrl)
 	service := NewMetricsService(mockRepo)
 
 	currentMetricValue := rand.Int63()

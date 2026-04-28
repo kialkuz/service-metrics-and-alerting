@@ -10,15 +10,6 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-//go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
-type MetricsRepository interface {
-	Add(ctx context.Context, typeValue, name string, value float64) error
-	UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error
-	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
-	GetList(ctx context.Context) ([]model.Metrics, error)
-	Close()
-}
-
 type MemStorage struct {
 	db   *pgxpool.Pool
 	list []model.Metrics
