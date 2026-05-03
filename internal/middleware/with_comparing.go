@@ -14,7 +14,8 @@ func WithComparing(c *gin.Context) {
 	if supportsGzip {
 		unpackedBody, err := compress.ReadGzip(c.Request.Body)
 		if err != nil {
-			panic(err)
+			c.Error(err)
+			return
 		}
 
 		c.Request.Body = unpackedBody

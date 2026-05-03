@@ -7,7 +7,6 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
-	"log"
 	"net/http"
 	"slices"
 	"strconv"
@@ -39,14 +38,12 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 
 	httpCode, err := h.check(metricType, name)
 	if err != nil {
-		log.Println(err)
 		c.JSON(httpCode, gin.H{"error": err.Error()})
 		return
 	}
 
 	newValue := c.Param("value")
 	if newValue == "" {
-		log.Println(err)
 		c.JSON(http.StatusBadRequest, errors.New("empty metric value"))
 		return
 	}
@@ -58,7 +55,6 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 	case model.Counter:
 		value, err := strconv.ParseInt(newValue, 10, 64)
 		if err != nil {
-			log.Println(err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect value type"})
 			return
 		}
@@ -66,7 +62,6 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 	case model.Gauge:
 		value, err := strconv.ParseFloat(newValue, 64)
 		if err != nil {
-			log.Println(err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect value type"})
 			return
 		}
@@ -77,7 +72,7 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 	defer cancel()
 	err = h.metricsService.Save(ctx, metrics)
 	if err != nil {
-		log.Println(err)
+		c.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Metric not saved"})
 		return
 	}
@@ -89,7 +84,7 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 	var request dto.Metrics
 
 	if err := c.BindJSON(&request); err != nil {
-		log.Println(err)
+		c.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -99,7 +94,7 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 
 	httpCode, err := h.check(metricType, id)
 	if err != nil {
-		log.Println(err)
+		c.Error(err)
 		c.JSON(httpCode, gin.H{"error": err.Error()})
 		return
 	}
@@ -112,7 +107,7 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 	case model.Counter:
 		if request.Delta == nil {
 			error := fmt.Errorf("с типом %s нужно передавать параметр delta", model.Counter)
-			log.Println(error)
+			c.Error(error)
 			c.JSON(http.StatusBadRequest, gin.H{"error": error.Error()})
 			return
 		}
@@ -121,7 +116,7 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 	case model.Gauge:
 		if request.Value == nil {
 			error := fmt.Errorf("с типом %s нужно передавать параметр value", model.Gauge)
-			log.Println(error)
+			c.Error(error)
 			c.JSON(http.StatusBadRequest, gin.H{"error": error.Error()})
 			return
 		}
@@ -134,12 +129,19 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 
 	err = h.metricsService.Save(ctx, metrics)
 	if err != nil {
-		log.Println(err.Error())
+		c.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Metric not saved"})
 		return
 	}
 
-	h.metricsFileService.SetMetric(metrics.Name, metrics)
+	item, err := h.metricsService.Get(ctx, metricType, id)
+	if err != nil {
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Metric not saved"})
+		return
+	}
+
+	h.metricsFileService.SetMetric(metrics.Name, *item)
 
 	c.Status(http.StatusOK)
 }
@@ -148,7 +150,7 @@ func (h *MetricsHandler) GetMetricHandler(c *gin.Context) {
 	var request dto.Metrics
 
 	if err := c.BindJSON(&request); err != nil {
-		log.Println(err)
+		c.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный JSON"})
 		return
 	}

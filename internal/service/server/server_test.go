@@ -28,7 +28,7 @@ func TestAddMetricSuccess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	mockRepo.EXPECT().Get(ctx, metricType, metricName).Return(nil, errors.ErrNotFound)
-	mockRepo.EXPECT().Add(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	mockRepo.EXPECT().Add(ctx, gomock.Any(), gomock.Any(), gomock.Any())
 
 	modelMetrics := model.Metrics{
 		MType: model.Counter,
@@ -68,7 +68,7 @@ func TestUpdateMetricSuccess(t *testing.T) {
 		Name:  modelMetrics.Name,
 		Delta: &currentMetricValue,
 	}, nil)
-	mockRepo.EXPECT().UpdateByTypeAndName(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	mockRepo.EXPECT().UpdateByTypeAndName(ctx, gomock.Any(), gomock.Any(), gomock.Any())
 
 	err := service.Save(ctx, modelMetrics)
 

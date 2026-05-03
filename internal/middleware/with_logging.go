@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,7 @@ func WithLogging(c *gin.Context) {
 	var sugar zap.SugaredLogger
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer logger.Sync()
 
@@ -20,6 +21,12 @@ func WithLogging(c *gin.Context) {
 	start := time.Now()
 
 	c.Next()
+
+	if len(c.Errors) > 0 {
+		for _, err := range c.Errors {
+			sugar.Fatal(err)
+		}
+	}
 
 	sugar.Infoln(
 		"uri", c.Request.URL.Path,

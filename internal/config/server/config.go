@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"kialkuz/service-metrics-and-alerting/internal/config/db"
+	"kialkuz/service-metrics-and-alerting/internal/config/db/postgresql"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
 )
 
@@ -18,7 +19,10 @@ type Config struct {
 }
 
 func NewConfig() (*Config, error) {
-	env.Load()
+	err := env.Load()
+	if err != nil {
+		return nil, err
+	}
 
 	config, err := GetIncomingParams()
 	if err != nil {
@@ -31,7 +35,7 @@ func NewConfig() (*Config, error) {
 		DBType:          config.DBType,
 		ServerHost:      addressParts[0],
 		ServerPort:      addressParts[1],
-		DB:              *db.NewConfig(),
+		DB:              *postgresql.NewConfig(),
 		StoreInterval:   config.StoreInterval,
 		FileStoragePath: config.FileStoragePath,
 		Restore:         config.Restore,

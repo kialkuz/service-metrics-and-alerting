@@ -88,7 +88,7 @@ func (s *MetricsService) Send(value dto.Metrics) (*http.Response, error) {
 	client := &http.Client{}
 	request, err := http.NewRequest(http.MethodPost, s.url+"/update/", bytes.NewReader(b))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	request.Header.Set("Content-Type", "application/json")

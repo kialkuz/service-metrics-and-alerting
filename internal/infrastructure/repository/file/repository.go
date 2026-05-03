@@ -3,38 +3,32 @@ package file
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
+	"kialkuz/service-metrics-and-alerting/internal/config/server"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"os"
-
-	_ "github.com/lib/pq"
 )
 
 //go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
 type MetricsFileRepository interface {
-	Truncate() error
+	CreateTemp() error
 	WriteMetric(metric *model.Metrics) error
-	Close() error
+	SaveOriginal() error
 }
 
-func NewFileStorage(filename string, storeInterval int) (*Saver, error) {
-	var file *os.File
-	var err error
-
-	if storeInterval != 0 {
-		file, err = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	} else {
-		file, err = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0644)
+func NewFileStorage(config *server.Config) (*Saver, error) {
+	if err := os.MkdirAll(config.FileStoragePath, 0644); err != nil {
+		return nil, fmt.Errorf("cannot create folder: %w", err)
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	return &Saver{file: file, writer: bufio.NewWriter(file)}, nil
+	return &Saver{config: config}, nil
 }
 
 func GetFromFile(fileStoragePath string) ([]model.Metrics, error) {
-	file, _ := os.OpenFile(fileStoragePath, os.O_RDONLY, 0644)
+	file, err := os.OpenFile(fileStoragePath+"/metrics", os.O_CREATE|os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
 
 	var metricsList []model.Metrics
 

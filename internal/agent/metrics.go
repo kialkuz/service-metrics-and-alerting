@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
@@ -22,38 +23,47 @@ func NewMetricsAgent(metricsService service.MetricsAgentService) *MetricsAgent {
 func (a *MetricsAgent) Collect(reportInterval, pollInterval int) {
 	now := time.Now()
 
+	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer ticker.Stop()
+
+	ctx := context.Background()
+
 	for {
-		time.Sleep(time.Duration(pollInterval) * time.Second)
-		if time.Now().After(now.Add(time.Duration(reportInterval) * time.Second)) {
-			for fieldName, fieldValue := range a.metricsService.CollectCounter() {
-				response, err := a.metricsService.Send(dto.Metrics{
-					ID:    fieldName,
-					MType: model.Counter,
-					Delta: &fieldValue,
-				})
-				if err != nil {
-					log.Println(err)
-					continue
-				}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if time.Now().After(now.Add(time.Duration(reportInterval) * time.Second)) {
+				a.send()
 
-				fmt.Println(response.Status)
+				now = time.Now()
 			}
+		}
+	}
+}
 
-			for fieldName, fieldValue := range a.metricsService.CollectGauge() {
-				response, err := a.metricsService.Send(dto.Metrics{
-					ID:    fieldName,
-					MType: model.Gauge,
-					Value: &fieldValue,
-				})
-				if err != nil {
-					log.Println(err)
-					continue
-				}
+func (a *MetricsAgent) send() {
+	for fieldName, fieldValue := range a.metricsService.CollectCounter() {
+		_, err := a.metricsService.Send(dto.Metrics{
+			ID:    fieldName,
+			MType: model.Counter,
+			Delta: &fieldValue,
+		})
+		if err != nil {
+			log.Println(fmt.Errorf("error agent send metric: %s", err))
+			continue
+		}
+	}
 
-				fmt.Println(response.Status)
-			}
-
-			now = time.Now()
+	for fieldName, fieldValue := range a.metricsService.CollectGauge() {
+		_, err := a.metricsService.Send(dto.Metrics{
+			ID:    fieldName,
+			MType: model.Gauge,
+			Value: &fieldValue,
+		})
+		if err != nil {
+			log.Println(fmt.Errorf("error agent send metric: %s", err))
+			continue
 		}
 	}
 }

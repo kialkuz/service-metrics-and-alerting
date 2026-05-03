@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	appConfig "kialkuz/service-metrics-and-alerting/internal/config/server"
 	"kialkuz/service-metrics-and-alerting/internal/handler"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db"
@@ -12,27 +13,28 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	appConfigData, err := appConfig.NewConfig()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error get configuration: %s", err.Error())
 	}
 
-	dbStorage, err := db.NewDBStorage(appConfigData.DBType, appConfigData.DB.DatabaseURI)
+	dbStorage := db.NewDBStorage(appConfigData.FileStoragePath)
+
+	fileStorage, err := file.NewFileStorage(appConfigData)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error init fileStorage: %s", err.Error())
 	}
-	defer dbStorage.Close()
 
 	err = RestoreMetrics(appConfigData.FileStoragePath, dbStorage)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error restore metrics: %s", err.Error())
 	}
-
-	fileStorage, err := file.NewFileStorage(appConfigData.FileStoragePath, appConfigData.StoreInterval)
-	if err != nil {
-		panic(err)
-	}
-	defer fileStorage.Close()
 
 	fileService := service.NewFileService(fileStorage, appConfigData.StoreInterval)
 
@@ -41,14 +43,20 @@ func main() {
 		fileService,
 	)
 
-	log.Println("Server running on port ", appConfigData.ServerPort)
 	newServer := server.NewServer(handler, appConfigData.ServerPort)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go fileService.SaveWithInterval(ctx)
+
+	fmt.Println("Server running on port ", appConfigData.ServerPort)
 	err = newServer.ListenAndServe()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error starting server: %s", err.Error())
 	}
 
-	fileService.SaveWithInterval()
+	return nil
 }
 
 func RestoreMetrics(fileStoragePath string, dbStorage db.MetricsDBRepository) error {
@@ -60,13 +68,7 @@ func RestoreMetrics(fileStoragePath string, dbStorage db.MetricsDBRepository) er
 	if len(metrics) > 0 {
 		ctx := context.Background()
 
-		for _, metric := range metrics {
-			if metric.Delta != nil {
-				dbStorage.Add(ctx, metric.MType, metric.Name, float64(*metric.Delta))
-			} else {
-				dbStorage.Add(ctx, metric.MType, metric.Name, *metric.Value)
-			}
-		}
+		dbStorage.AddList(ctx, metrics)
 	}
 
 	return nil

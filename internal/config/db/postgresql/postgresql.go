@@ -1,7 +1,8 @@
-package db
+package postgresql
 
 import (
 	"fmt"
+	"kialkuz/service-metrics-and-alerting/internal/config/db"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
 )
 
@@ -13,12 +14,8 @@ const (
 	defaultDBName   = "default_name"
 )
 
-type Config struct {
-	DatabaseURI string
-}
-
-func NewConfig() *Config {
-	return &Config{
+func NewConfig() *db.Config {
+	return &db.Config{
 		DatabaseURI: "postgres://" + getDatabaseURI(),
 	}
 }

@@ -1,14 +1,16 @@
 package server
 
 import (
+	"context"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/file"
 	"kialkuz/service-metrics-and-alerting/internal/model"
+	"log"
 	"time"
 )
 
 type MetricsFileService interface {
 	SetMetric(name string, metric model.Metrics)
-	Save()
+	Save() error
 }
 
 var metricsList map[string]model.Metrics
@@ -30,20 +32,42 @@ func (p *FileService) SetMetric(name string, metric model.Metrics) {
 	metricsList[name] = metric
 }
 
-func (p *FileService) SaveWithInterval() {
-	for {
-		if p.storeInterval != 0 {
-			time.Sleep(time.Duration(p.storeInterval) * time.Second)
-		}
+func (p *FileService) SaveWithInterval(ctx context.Context) {
+	ticker := time.NewTicker(time.Duration(p.storeInterval) * time.Second)
+	defer ticker.Stop()
 
-		p.Save()
+	for range ticker.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			err := p.Save()
+			if err != nil {
+				log.Println("Error saving metrics:", err)
+			}
+		}
 	}
 }
 
-func (p *FileService) Save() {
-	p.repository.Truncate()
+func (p *FileService) Save() error {
+	if len(metricsList) != 0 {
+		err := p.repository.CreateTemp()
+		if err != nil {
+			return err
+		}
 
-	for _, metric := range metricsList {
-		p.repository.WriteMetric(&metric)
+		for _, metric := range metricsList {
+			err = p.repository.WriteMetric(&metric)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = p.repository.SaveOriginal()
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
