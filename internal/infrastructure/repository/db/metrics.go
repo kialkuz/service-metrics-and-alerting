@@ -3,85 +3,90 @@ package db
 import (
 	"context"
 	"errors"
-	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/model"
-	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
-	"log"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 //go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
-type MetricsRepository interface {
-	Add(ctx context.Context, metrics model.Metrics) error
-	Update(ctx context.Context, value float64, id int) error
+type MetricsDBRepository interface {
+	Add(ctx context.Context, typeValue, name string, value float64)
+	AddList(ctx context.Context, metrics []model.Metrics)
+	UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string)
 	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
 	GetList(ctx context.Context) ([]model.Metrics, error)
-	Close()
 }
 
 type MemStorage struct {
-	db   *pgxpool.Pool
-	list []model.Metrics
+	list map[string]map[string]*model.Metrics
 }
 
-func (r *MemStorage) Close() {
-	r.db.Close()
-}
+var id = 1
 
-func (r *MemStorage) Add(ctx context.Context, metrics model.Metrics) error {
-	_, err := r.db.Exec(ctx, `INSERT INTO metrics (type, name, value) VALUES ($1, $2, $3)`,
-		metrics.MType,
-		metrics.Name,
-		*metrics.Value,
-	)
-	if err != nil {
-		log.Println(err)
-		return fmt.Errorf("error add metrics: %w", err)
+func (r *MemStorage) Add(ctx context.Context, metricType, name string, value float64) {
+	metrics := &model.Metrics{
+		ID:    id,
+		MType: metricType,
+		Name:  name,
 	}
-	return nil
+
+	if metricType == model.Counter {
+		intValue := int64(value)
+
+		metrics.Delta = &intValue
+	} else {
+		metrics.Value = &value
+	}
+
+	if r.list[metricType] == nil {
+		r.list[metricType] = make(map[string]*model.Metrics)
+	}
+
+	r.list[metricType][name] = metrics
+
+	id++
 }
 
-func (r *MemStorage) Update(ctx context.Context, value float64, id int) error {
-	_, err := r.db.Exec(ctx, `UPDATE metrics SET value = $1 WHERE id = $2`, value, id)
-	if err != nil {
-		return fmt.Errorf("error update metrics: %w", err)
+func (r *MemStorage) AddList(ctx context.Context, metrics []model.Metrics) {
+	for _, metric := range metrics {
+		if metric.Delta != nil {
+			r.Add(ctx, metric.MType, metric.Name, float64(*metric.Delta))
+		} else {
+			r.Add(ctx, metric.MType, metric.Name, *metric.Value)
+		}
 	}
-	return nil
+}
+
+func (r *MemStorage) UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) {
+	metrics := r.list[metricType][name]
+	if metricType == model.Counter {
+		intValue := int64(value)
+
+		metrics.Delta = &intValue
+	} else {
+		metrics.Value = &value
+	}
+
+	r.list[metricType][name] = metrics
 }
 
 func (r *MemStorage) Get(ctx context.Context, metricType, name string) (*model.Metrics, error) {
-	var metrics model.Metrics
-	row := r.db.QueryRow(ctx, `SELECT id, type, name, value FROM metrics WHERE type=$1 AND name=$2`, metricType, name)
-	err := row.Scan(&metrics.ID, &metrics.MType, &metrics.Name, &metrics.Value)
-	if err != nil {
-		log.Println(err)
-		return nil, errors.New(pkgErrors.ErrNotFound.Error())
+	if metric, ok := r.list[metricType][name]; ok {
+		return metric, nil
 	}
-	return &metrics, nil
+
+	return nil, errors.New("metric not found")
 }
 
 func (r *MemStorage) GetList(ctx context.Context) ([]model.Metrics, error) {
 	var metrics []model.Metrics
-	rows, err := r.db.Query(ctx, `SELECT id, type, name, value FROM metrics`)
-	if err != nil {
-		return nil, err
+
+	if len(r.list) == 0 {
+		return nil, errors.New("empty metrics list")
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var metric model.Metrics
-
-		err := rows.Scan(&metric.ID, &metric.MType, &metric.Name, &metric.Value)
-		if err != nil {
-			return nil, err
+	for _, metricsByName := range r.list {
+		for _, metric := range metricsByName {
+			metrics = append(metrics, *metric)
 		}
-
-		metrics = append(metrics, metric)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	return metrics, nil

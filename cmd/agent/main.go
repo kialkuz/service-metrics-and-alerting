@@ -1,34 +1,20 @@
 package main
 
 import (
-	"flag"
-	"kialkuz/service-metrics-and-alerting/internal/agent"
-	appConfig "kialkuz/service-metrics-and-alerting/internal/config"
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
-	"kialkuz/service-metrics-and-alerting/internal/service"
-)
+	"log"
 
-const (
-	pollInterval   = 1
-	reportInterval = 1
-	host           = "localhost"
-	port           = "8080"
+	"kialkuz/service-metrics-and-alerting/internal/agent"
+	appConfig "kialkuz/service-metrics-and-alerting/internal/config/agent"
+	service "kialkuz/service-metrics-and-alerting/internal/service/agent"
 )
 
 func main() {
-	serverAddress := flag.String(
-		"a",
-		env.GetEnv("SERVER_HOST", host)+":"+env.GetEnv("SERVER_PORT", port),
-		"server address",
-	)
-	reportInterval := flag.Int("r", reportInterval, "report interval")
-	pollInterval := flag.Int("p", pollInterval, "poll interval")
-
-	flag.Parse()
-
-	appConfig.NewConfig(*serverAddress)
-	services := service.NewMetricsService(nil)
+	config, err := appConfig.NewConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	services := service.NewMetricsService(config.URL)
 	agent := agent.NewMetricsAgent(services)
 
-	agent.Collect(*reportInterval, *pollInterval)
+	agent.Collect(config.ReportInterval, config.PollInterval)
 }
