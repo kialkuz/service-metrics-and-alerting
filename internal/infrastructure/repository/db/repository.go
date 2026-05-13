@@ -2,10 +2,12 @@ package db
 
 import (
 	"kialkuz/service-metrics-and-alerting/internal/model"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewDBStorage(fileStoragePath string) MetricsDBRepository {
+func NewDBStorage(pool *pgxpool.Pool) MetricsDBRepository {
 	list := make(map[string]map[string]*model.Metrics)
 
-	return &MemStorage{list: list}
+	return &MemStorage{list: list, pool: pool}
 }

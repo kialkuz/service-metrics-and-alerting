@@ -7,6 +7,7 @@ import (
 )
 
 type MetricsServerService interface {
+	Ping(ctx context.Context) error
 	Save(ctx context.Context, metrics model.Metrics) error
 	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
 	GetList(ctx context.Context) ([]model.Metrics, error)
@@ -20,6 +21,10 @@ type MetricsService struct {
 
 func NewMetricsService(metricsRepository db.MetricsDBRepository) *MetricsService {
 	return &MetricsService{metricsRepository: metricsRepository}
+}
+
+func (s *MetricsService) Ping(ctx context.Context) error {
+	return s.metricsRepository.Ping(ctx)
 }
 
 func (s *MetricsService) Get(ctx context.Context, metricType, name string) (*model.Metrics, error) {

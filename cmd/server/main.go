@@ -10,6 +10,8 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/server"
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
 	"log"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -24,7 +26,13 @@ func run() error {
 		return fmt.Errorf("error get configuration: %s", err.Error())
 	}
 
-	dbStorage := db.NewDBStorage(appConfigData.FileStoragePath)
+	pool, err := pgxpool.New(context.Background(), appConfigData.DB.DatabaseURI)
+	if err != nil {
+		return fmt.Errorf("unable to connect to database: %s", err.Error())
+	}
+	defer pool.Close()
+
+	dbStorage := db.NewDBStorage(pool)
 
 	fileStorage, err := file.NewFileStorage(appConfigData)
 	if err != nil {

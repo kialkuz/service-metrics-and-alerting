@@ -191,6 +191,44 @@ func (c *MockMetricsDBRepositoryGetListCall) DoAndReturn(f func(context.Context)
 	return c
 }
 
+// Ping mocks base method.
+func (m *MockMetricsDBRepository) Ping(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Ping", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Ping indicates an expected call of Ping.
+func (mr *MockMetricsDBRepositoryMockRecorder) Ping(ctx any) *MockMetricsDBRepositoryPingCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockMetricsDBRepository)(nil).Ping), ctx)
+	return &MockMetricsDBRepositoryPingCall{Call: call}
+}
+
+// MockMetricsDBRepositoryPingCall wrap *gomock.Call
+type MockMetricsDBRepositoryPingCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockMetricsDBRepositoryPingCall) Return(arg0 error) *MockMetricsDBRepositoryPingCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockMetricsDBRepositoryPingCall) Do(f func(context.Context) error) *MockMetricsDBRepositoryPingCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockMetricsDBRepositoryPingCall) DoAndReturn(f func(context.Context) error) *MockMetricsDBRepositoryPingCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UpdateByTypeAndName mocks base method.
 func (m *MockMetricsDBRepository) UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) {
 	m.ctrl.T.Helper()

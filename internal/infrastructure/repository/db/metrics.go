@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"kialkuz/service-metrics-and-alerting/internal/model"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 //go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
 type MetricsDBRepository interface {
+	Ping(ctx context.Context) error
 	Add(ctx context.Context, typeValue, name string, value float64)
 	AddList(ctx context.Context, metrics []model.Metrics)
 	UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string)
@@ -17,9 +20,18 @@ type MetricsDBRepository interface {
 
 type MemStorage struct {
 	list map[string]map[string]*model.Metrics
+	pool *pgxpool.Pool
 }
 
 var id = 1
+
+func (r *MemStorage) Ping(ctx context.Context) error {
+	if err := r.pool.Ping(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (r *MemStorage) Add(ctx context.Context, metricType, name string, value float64) {
 	metrics := &model.Metrics{

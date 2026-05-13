@@ -32,6 +32,18 @@ func NewMetricsHandler(
 	}
 }
 
+func (h *MetricsHandler) PingDB(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err := h.metricsService.Ping(ctx); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
+}
+
 func (h *MetricsHandler) AddHandler(c *gin.Context) {
 	metricType := c.Param("type")
 	name := c.Param("name")

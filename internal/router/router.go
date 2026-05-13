@@ -17,6 +17,7 @@ func Init(handler *handler.MetricsHandler) *gin.Engine {
 	router.POST("/value/", handler.GetMetricHandler)
 	router.GET("/value/:type/:name", handler.GetMetricValueHandler)
 	router.GET("/", handler.GetListHandler)
+	router.GET("/ping", handler.PingDB)
 
 	return router
 }

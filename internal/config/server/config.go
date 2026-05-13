@@ -35,7 +35,7 @@ func NewConfig() (*Config, error) {
 		DBType:          config.DBType,
 		ServerHost:      addressParts[0],
 		ServerPort:      addressParts[1],
-		DB:              *postgresql.NewConfig(),
+		DB:              *postgresql.NewConfig(config.DatabaseDSN),
 		StoreInterval:   config.StoreInterval,
 		FileStoragePath: config.FileStoragePath,
 		Restore:         config.Restore,
