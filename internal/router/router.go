@@ -1,8 +1,8 @@
 package router
 
 import (
-	"kialkuz/service-metrics-and-alerting/internal/handler"
 	"kialkuz/service-metrics-and-alerting/internal/middleware"
+	"kialkuz/service-metrics-and-alerting/internal/server/handler"
 
 	"github.com/gin-gonic/gin"
 )

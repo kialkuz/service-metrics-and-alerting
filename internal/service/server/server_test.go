@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db/mocks"
 	"kialkuz/service-metrics-and-alerting/internal/model"
+	"kialkuz/service-metrics-and-alerting/internal/service/server/mocks"
 	"kialkuz/service-metrics-and-alerting/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +18,7 @@ func TestAddMetricSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockMetricsDBRepository(ctrl)
+	mockRepo := mocks.NewMockMetricsRepository(ctrl)
 	service := NewMetricsService(mockRepo)
 
 	metricType := model.Counter
@@ -44,7 +44,7 @@ func TestUpdateMetricSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockMetricsDBRepository(ctrl)
+	mockRepo := mocks.NewMockMetricsRepository(ctrl)
 	service := NewMetricsService(mockRepo)
 
 	currentMetricValue := rand.Int63()
