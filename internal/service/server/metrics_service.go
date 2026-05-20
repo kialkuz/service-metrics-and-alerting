@@ -100,6 +100,10 @@ func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Met
 				newValue := *metric.Delta + *existMetric.Delta
 				existMetric.Delta = &newValue
 			} else {
+				if existMetric.Value == metric.Value {
+					continue
+				}
+
 				existMetric.Value = metric.Value
 			}
 

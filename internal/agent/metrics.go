@@ -43,27 +43,28 @@ func (a *MetricsAgent) Collect(reportInterval, pollInterval int) {
 }
 
 func (a *MetricsAgent) send() {
+	var metricsForSend []dto.Metrics
+
 	for fieldName, fieldValue := range a.metricsService.CollectCounter() {
-		_, err := a.metricsService.Send(dto.Metrics{
+		metricsForSend = append(metricsForSend, dto.Metrics{
 			ID:    fieldName,
 			MType: model.Counter,
 			Delta: &fieldValue,
 		})
-		if err != nil {
-			log.Println(fmt.Errorf("error agent send metric: %s", err))
-			continue
-		}
 	}
 
 	for fieldName, fieldValue := range a.metricsService.CollectGauge() {
-		_, err := a.metricsService.Send(dto.Metrics{
+		metricsForSend = append(metricsForSend, dto.Metrics{
 			ID:    fieldName,
 			MType: model.Gauge,
 			Value: &fieldValue,
 		})
+	}
+
+	if len(metricsForSend) > 0 {
+		_, err := a.metricsService.SendListMetrics(metricsForSend)
 		if err != nil {
 			log.Println(fmt.Errorf("error agent send metric: %s", err))
-			continue
 		}
 	}
 }

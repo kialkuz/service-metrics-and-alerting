@@ -18,8 +18,10 @@ import (
 type MetricsAgentService interface {
 	CollectCounter() map[string]int64
 	CollectGauge() map[string]float64
-	Send(value dto.Metrics) (*http.Response, error)
-	SendData(metricType, name, value string) (*http.Response, error)
+	SendSingleMetric(value dto.Metrics) (*http.Response, error)
+	SendListMetrics(value []dto.Metrics) (*http.Response, error)
+	SendJsonBody(jsonData []byte, path string) (*http.Response, error)
+	SendPostQuery(metricType, name, value string) (*http.Response, error)
 }
 
 //go:generate go run go.uber.org/mock/mockgen -source=service.go -destination=mocks/service_mock.go -package=mocks -typed
@@ -59,7 +61,7 @@ func (s *MetricsService) collectMemStats() map[string]float64 {
 		f := r.FieldByName(field)
 		if !f.IsValid() {
 			log.Printf("Поле %s не валидное", field)
-			continue // или можно залогировать
+			continue
 		}
 
 		switch f.Kind() {
@@ -73,20 +75,44 @@ func (s *MetricsService) collectMemStats() map[string]float64 {
 	return statsFields
 }
 
-func (s *MetricsService) Send(value dto.Metrics) (*http.Response, error) {
+func (s *MetricsService) SendSingleMetric(value dto.Metrics) (*http.Response, error) {
 	jsonData, err := json.Marshal(value)
 	if err != nil {
 		fmt.Println("Error marshalling JSON:", err)
 		return nil, err
 	}
 
+	response, err := s.SendJsonBody(jsonData, "/update/")
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (s *MetricsService) SendListMetrics(value []dto.Metrics) (*http.Response, error) {
+	jsonData, err := json.Marshal(value)
+	if err != nil {
+		fmt.Println("Error marshalling JSON:", err)
+		return nil, err
+	}
+
+	response, err := s.SendJsonBody(jsonData, "/updates/")
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (s *MetricsService) SendJsonBody(jsonData []byte, path string) (*http.Response, error) {
 	b, err := compress.MakeGzip(jsonData)
 	if err != nil {
 		return nil, err
 	}
 
 	client := &http.Client{}
-	request, err := http.NewRequest(http.MethodPost, s.url+"/update/", bytes.NewReader(b))
+	request, err := http.NewRequest(http.MethodPost, s.url+path, bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +130,7 @@ func (s *MetricsService) Send(value dto.Metrics) (*http.Response, error) {
 	return response, nil
 }
 
-func (s *MetricsService) SendData(metricType, name, value string) (*http.Response, error) {
+func (s *MetricsService) SendPostQuery(metricType, name, value string) (*http.Response, error) {
 	query := fmt.Sprintf("/update/%s/%s/%s", metricType, name, value)
 	response, err := http.Post(s.url+query, "text/plain", nil)
 	if err != nil {
