@@ -20,7 +20,7 @@ type MetricsAgentService interface {
 	CollectGauge() map[string]float64
 	SendSingleMetric(value dto.Metrics) (*http.Response, error)
 	SendListMetrics(value []dto.Metrics) (*http.Response, error)
-	SendJsonBody(jsonData []byte, path string) (*http.Response, error)
+	SendJSONBody(jsonData []byte, path string) (*http.Response, error)
 	SendPostQuery(metricType, name, value string) (*http.Response, error)
 }
 
@@ -82,7 +82,7 @@ func (s *MetricsService) SendSingleMetric(value dto.Metrics) (*http.Response, er
 		return nil, err
 	}
 
-	response, err := s.SendJsonBody(jsonData, "/update/")
+	response, err := s.SendJSONBody(jsonData, "/update/")
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +93,10 @@ func (s *MetricsService) SendSingleMetric(value dto.Metrics) (*http.Response, er
 func (s *MetricsService) SendListMetrics(value []dto.Metrics) (*http.Response, error) {
 	jsonData, err := json.Marshal(value)
 	if err != nil {
-		fmt.Println("Error marshalling JSON:", err)
-		return nil, err
+		return nil, fmt.Errorf("error marshalling JSON: %s", err.Error())
 	}
 
-	response, err := s.SendJsonBody(jsonData, "/updates/")
+	response, err := s.SendJSONBody(jsonData, "/updates/")
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +104,7 @@ func (s *MetricsService) SendListMetrics(value []dto.Metrics) (*http.Response, e
 	return response, nil
 }
 
-func (s *MetricsService) SendJsonBody(jsonData []byte, path string) (*http.Response, error) {
+func (s *MetricsService) SendJSONBody(jsonData []byte, path string) (*http.Response, error) {
 	b, err := compress.MakeGzip(jsonData)
 	if err != nil {
 		return nil, err

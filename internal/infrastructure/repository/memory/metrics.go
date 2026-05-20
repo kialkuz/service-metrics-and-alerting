@@ -8,7 +8,7 @@ import (
 
 //go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
 type MetricsMemoryRepository interface {
-	Add(ctx context.Context, typeValue, name string, value float64) error
+	Add(ctx context.Context, metric model.Metrics) error
 	AddList(ctx context.Context, metrics []model.Metrics) error
 	SaveList(ctx context.Context, metricsForInsert []model.Metrics, metricsForUpdate []model.Metrics) error
 	UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error
@@ -43,36 +43,20 @@ func (r *MemStorage) AddList(ctx context.Context, metrics []model.Metrics) error
 	var err error
 
 	for _, metric := range metrics {
-		if metric.Delta != nil {
-			err = r.Add(ctx, metric.MType, metric.Name, float64(*metric.Delta))
-		} else {
-			err = r.Add(ctx, metric.MType, metric.Name, *metric.Value)
-		}
+		err = r.Add(ctx, metric)
 	}
 
 	return err
 }
 
-func (r *MemStorage) Add(ctx context.Context, metricType, name string, value float64) error {
-	metrics := &model.Metrics{
-		ID:    id,
-		MType: metricType,
-		Name:  name,
+func (r *MemStorage) Add(ctx context.Context, metric model.Metrics) error {
+	metric.ID = id
+
+	if r.list[metric.MType] == nil {
+		r.list[metric.MType] = make(map[string]*model.Metrics)
 	}
 
-	if metricType == model.Counter {
-		intValue := int64(value)
-
-		metrics.Delta = &intValue
-	} else {
-		metrics.Value = &value
-	}
-
-	if r.list[metricType] == nil {
-		r.list[metricType] = make(map[string]*model.Metrics)
-	}
-
-	r.list[metricType][name] = metrics
+	r.list[metric.MType][metric.Name] = &metric
 
 	id++
 
@@ -80,15 +64,8 @@ func (r *MemStorage) Add(ctx context.Context, metricType, name string, value flo
 }
 
 func (r *MemStorage) UpdateList(ctx context.Context, metrics []model.Metrics) error {
-	for index, metric := range metrics {
-		metric := r.list[metric.MType][metric.Name]
-
-		switch metric.MType {
-		case model.Counter:
-			metrics[index].Delta = metric.Delta
-		case model.Gauge:
-			metrics[index].Value = metric.Value
-		}
+	for _, metric := range metrics {
+		r.list[metric.MType][metric.Name] = &metric
 	}
 
 	return nil

@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"strings"
@@ -75,7 +74,7 @@ func (r *MemStorage) AddList(ctx context.Context, metrics []model.Metrics) error
 		paramIndex += 4
 
 		if metric.Delta != nil {
-			args = append(args, metric.MType, metric.Name, nil, float64(*metric.Delta))
+			args = append(args, metric.MType, metric.Name, nil, *metric.Delta)
 		} else {
 			args = append(args, metric.MType, metric.Name, *metric.Value, nil)
 		}
@@ -86,9 +85,13 @@ func (r *MemStorage) AddList(ctx context.Context, metrics []model.Metrics) error
 		VALUES %s
 	`, strings.Join(values, ","))
 
-	tx := *r.tx
-
-	_, err := tx.Exec(ctx, query, args...)
+	var err error
+	if r.tx != nil {
+		tx := *r.tx
+		_, err = tx.Exec(ctx, query, args...)
+	} else {
+		_, err = r.pool.Exec(ctx, query, args...)
+	}
 
 	return err
 }
@@ -97,23 +100,23 @@ func (r *MemStorage) UpdateList(ctx context.Context, metrics []model.Metrics) er
 	for _, metric := range metrics {
 		var err error
 
-		tx := *r.tx
-
 		switch metric.MType {
 		case model.Counter:
-			_, err = tx.Exec(
-				ctx,
-				"UPDATE metrics SET delta = $1 WHERE id = $2",
-				*metric.Delta,
-				metric.ID,
-			)
+			query := "UPDATE metrics SET delta = $1 WHERE id = $2"
+			if r.tx != nil {
+				tx := *r.tx
+				_, err = tx.Exec(ctx, query, *metric.Delta, metric.ID)
+			} else {
+				_, err = r.pool.Exec(ctx, query, *metric.Delta, metric.ID)
+			}
 		case model.Gauge:
-			_, err = tx.Exec(
-				ctx,
-				"UPDATE metrics SET value = $1 WHERE id = $2",
-				*metric.Value,
-				metric.ID,
-			)
+			query := "UPDATE metrics SET value = $1 WHERE id = $2"
+			if r.tx != nil {
+				tx := *r.tx
+				_, err = tx.Exec(ctx, query, *metric.Value, metric.ID)
+			} else {
+				_, err = r.pool.Exec(ctx, query, *metric.Value, metric.ID)
+			}
 		}
 
 		if err != nil {
@@ -124,24 +127,24 @@ func (r *MemStorage) UpdateList(ctx context.Context, metrics []model.Metrics) er
 	return nil
 }
 
-func (r *MemStorage) Add(ctx context.Context, metricType, name string, value float64) error {
+func (r *MemStorage) Add(ctx context.Context, metric model.Metrics) error {
 	var err error
 
-	if metricType == model.Counter {
+	if metric.MType == model.Counter {
 		_, err = r.pool.Exec(
 			ctx,
 			"INSERT INTO metrics (type, name, delta) VALUES ($1, $2, $3)",
-			metricType,
-			name,
-			int64(value),
+			metric.MType,
+			metric.Name,
+			*metric.Delta,
 		)
 	} else {
 		_, err = r.pool.Exec(
 			ctx,
 			"INSERT INTO metrics (type, name, value) VALUES ($1, $2, $3)",
-			metricType,
-			name,
-			value,
+			metric.MType,
+			metric.Name,
+			*metric.Value,
 		)
 	}
 
@@ -184,10 +187,6 @@ func (r *MemStorage) Get(ctx context.Context, metricType, name string) (*model.M
 			&metric.Delta,
 		)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-
 		return nil, err
 	}
 

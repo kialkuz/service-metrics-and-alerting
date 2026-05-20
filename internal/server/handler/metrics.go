@@ -257,7 +257,6 @@ func (h *MetricsHandler) GetMetricHandler(c *gin.Context) {
 	var request dto.Metrics
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный JSON"})
 		return
 	}
@@ -272,7 +271,13 @@ func (h *MetricsHandler) GetMetricHandler(c *gin.Context) {
 	defer cancel()
 	metric, err := h.metricsService.Get(ctx, request.MType, request.ID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.Error(err)
+
+		if metric == nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "metric not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 

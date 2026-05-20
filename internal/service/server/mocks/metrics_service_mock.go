@@ -42,17 +42,17 @@ func (m *MockMetricsRepository) EXPECT() *MockMetricsRepositoryMockRecorder {
 }
 
 // Add mocks base method.
-func (m *MockMetricsRepository) Add(ctx context.Context, typeValue, name string, value float64) error {
+func (m *MockMetricsRepository) Add(ctx context.Context, metric model.Metrics) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Add", ctx, typeValue, name, value)
+	ret := m.ctrl.Call(m, "Add", ctx, metric)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Add indicates an expected call of Add.
-func (mr *MockMetricsRepositoryMockRecorder) Add(ctx, typeValue, name, value any) *MockMetricsRepositoryAddCall {
+func (mr *MockMetricsRepositoryMockRecorder) Add(ctx, metric any) *MockMetricsRepositoryAddCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMetricsRepository)(nil).Add), ctx, typeValue, name, value)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMetricsRepository)(nil).Add), ctx, metric)
 	return &MockMetricsRepositoryAddCall{Call: call}
 }
 
@@ -68,13 +68,13 @@ func (c *MockMetricsRepositoryAddCall) Return(arg0 error) *MockMetricsRepository
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMetricsRepositoryAddCall) Do(f func(context.Context, string, string, float64) error) *MockMetricsRepositoryAddCall {
+func (c *MockMetricsRepositoryAddCall) Do(f func(context.Context, model.Metrics) error) *MockMetricsRepositoryAddCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMetricsRepositoryAddCall) DoAndReturn(f func(context.Context, string, string, float64) error) *MockMetricsRepositoryAddCall {
+func (c *MockMetricsRepositoryAddCall) DoAndReturn(f func(context.Context, model.Metrics) error) *MockMetricsRepositoryAddCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

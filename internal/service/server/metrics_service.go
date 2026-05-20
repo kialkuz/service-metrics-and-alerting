@@ -7,7 +7,7 @@ import (
 )
 
 type MetricsRepository interface {
-	Add(ctx context.Context, typeValue, name string, value float64) error
+	Add(ctx context.Context, metric model.Metrics) error
 	AddList(ctx context.Context, metrics []model.Metrics) error
 	SaveList(ctx context.Context, metricsForInsert []model.Metrics, metricsForUpdate []model.Metrics) error
 	UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error
@@ -67,13 +67,13 @@ func (s *MetricsService) SaveMetric(ctx context.Context, metrics model.Metrics) 
 	switch metrics.MType {
 	case model.Gauge:
 		if existMetric == nil {
-			return s.metricsRepository.Add(ctx, metrics.MType, metrics.Name, *metrics.Value)
+			return s.metricsRepository.Add(ctx, metrics)
 		} else {
 			return s.UpdateByTypeAndName(ctx, *metrics.Value, metrics.MType, metrics.Name)
 		}
 	case model.Counter:
 		if existMetric == nil {
-			return s.metricsRepository.Add(ctx, metrics.MType, metrics.Name, float64(*metrics.Delta))
+			return s.metricsRepository.Add(ctx, metrics)
 		} else {
 			newValue := float64(*metrics.Delta + *existMetric.Delta)
 
@@ -87,27 +87,45 @@ func (s *MetricsService) SaveMetric(ctx context.Context, metrics model.Metrics) 
 func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Metrics) error {
 	existMetrics, _ := s.GetGroupedByTypeAndName(ctx)
 
-	var metricsForInsert []model.Metrics
+	preparedForInsert := make(map[string]map[string]model.Metrics)
 	var metricsForUpdate []model.Metrics
-
 	for _, metric := range metrics {
 		existMetric, exists := existMetrics[metric.MType][metric.Name]
 
 		if !exists {
-			metricsForInsert = append(metricsForInsert, metric)
+			metricForInsert, existsInsert := preparedForInsert[metric.MType][metric.Name]
+			if !existsInsert {
+				preparedForInsert[metric.MType] = make(map[string]model.Metrics)
+				preparedForInsert[metric.MType][metric.Name] = metric
+			} else {
+				if metric.MType == model.Counter {
+					newValue := *metric.Delta + *metricForInsert.Delta
+
+					metricForInsert.Delta = &newValue
+				} else {
+					metricForInsert.Value = metric.Value
+				}
+
+				preparedForInsert[metric.MType][metric.Name] = metricForInsert
+			}
 		} else {
 			if metric.MType == model.Counter {
 				newValue := *metric.Delta + *existMetric.Delta
 				existMetric.Delta = &newValue
 			} else {
-				if existMetric.Value == metric.Value {
-					continue
-				}
-
 				existMetric.Value = metric.Value
 			}
 
 			metricsForUpdate = append(metricsForUpdate, existMetric)
+		}
+	}
+
+	var metricsForInsert []model.Metrics
+	if len(preparedForInsert) > 0 {
+		for _, metricsByType := range preparedForInsert {
+			for _, metric := range metricsByType {
+				metricsForInsert = append(metricsForInsert, metric)
+			}
 		}
 	}
 
