@@ -35,7 +35,7 @@ func TestAddMetricSuccess(t *testing.T) {
 		Name:  metricName,
 		Delta: &metricValue,
 	}
-	err := service.Save(ctx, modelMetrics)
+	err := service.SaveMetric(ctx, modelMetrics)
 
 	assert.NoError(t, err)
 }
@@ -70,7 +70,7 @@ func TestUpdateMetricSuccess(t *testing.T) {
 	}, nil)
 	mockRepo.EXPECT().UpdateByTypeAndName(ctx, gomock.Any(), gomock.Any(), gomock.Any())
 
-	err := service.Save(ctx, modelMetrics)
+	err := service.SaveMetric(ctx, modelMetrics)
 
 	assert.NoError(t, err)
 }

@@ -195,6 +195,44 @@ func (c *MockMetricsRepositoryGetListCall) DoAndReturn(f func(context.Context) (
 	return c
 }
 
+// SaveList mocks base method.
+func (m *MockMetricsRepository) SaveList(ctx context.Context, metricsForInsert, metricsForUpdate []model.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveList", ctx, metricsForInsert, metricsForUpdate)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveList indicates an expected call of SaveList.
+func (mr *MockMetricsRepositoryMockRecorder) SaveList(ctx, metricsForInsert, metricsForUpdate any) *MockMetricsRepositorySaveListCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveList", reflect.TypeOf((*MockMetricsRepository)(nil).SaveList), ctx, metricsForInsert, metricsForUpdate)
+	return &MockMetricsRepositorySaveListCall{Call: call}
+}
+
+// MockMetricsRepositorySaveListCall wrap *gomock.Call
+type MockMetricsRepositorySaveListCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockMetricsRepositorySaveListCall) Return(arg0 error) *MockMetricsRepositorySaveListCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockMetricsRepositorySaveListCall) Do(f func(context.Context, []model.Metrics, []model.Metrics) error) *MockMetricsRepositorySaveListCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockMetricsRepositorySaveListCall) DoAndReturn(f func(context.Context, []model.Metrics, []model.Metrics) error) *MockMetricsRepositorySaveListCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UpdateByTypeAndName mocks base method.
 func (m *MockMetricsRepository) UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error {
 	m.ctrl.T.Helper()

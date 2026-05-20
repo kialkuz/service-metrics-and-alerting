@@ -9,6 +9,7 @@ import (
 type MetricsRepository interface {
 	Add(ctx context.Context, typeValue, name string, value float64) error
 	AddList(ctx context.Context, metrics []model.Metrics) error
+	SaveList(ctx context.Context, metricsForInsert []model.Metrics, metricsForUpdate []model.Metrics) error
 	UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error
 	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
 	GetList(ctx context.Context) ([]model.Metrics, error)
@@ -41,7 +42,26 @@ func (s *MetricsService) GetList(ctx context.Context) ([]model.Metrics, error) {
 	return items, nil
 }
 
-func (s *MetricsService) Save(ctx context.Context, metrics model.Metrics) error {
+func (s *MetricsService) GetGroupedByTypeAndName(ctx context.Context) (map[string]map[string]model.Metrics, error) {
+	items, err := s.metricsRepository.GetList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	metrics := make(map[string]map[string]model.Metrics)
+
+	for _, item := range items {
+		if _, exists := metrics[item.MType]; !exists {
+			metrics[item.MType] = make(map[string]model.Metrics)
+		}
+
+		metrics[item.MType][item.Name] = item
+	}
+
+	return metrics, nil
+}
+
+func (s *MetricsService) SaveMetric(ctx context.Context, metrics model.Metrics) error {
 	existMetric, _ := s.metricsRepository.Get(ctx, metrics.MType, metrics.Name)
 
 	switch metrics.MType {
@@ -62,6 +82,32 @@ func (s *MetricsService) Save(ctx context.Context, metrics model.Metrics) error 
 	}
 
 	return errors.New("unknown metric type")
+}
+
+func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Metrics) error {
+	existMetrics, _ := s.GetGroupedByTypeAndName(ctx)
+
+	var metricsForInsert []model.Metrics
+	var metricsForUpdate []model.Metrics
+
+	for _, metric := range metrics {
+		existMetric, exists := existMetrics[metric.MType][metric.Name]
+
+		if !exists {
+			metricsForInsert = append(metricsForInsert, metric)
+		} else {
+			if metric.MType == model.Counter {
+				newValue := *metric.Delta + *existMetric.Delta
+				existMetric.Delta = &newValue
+			} else {
+				existMetric.Value = metric.Value
+			}
+
+			metricsForUpdate = append(metricsForUpdate, existMetric)
+		}
+	}
+
+	return s.metricsRepository.SaveList(ctx, metricsForInsert, metricsForUpdate)
 }
 
 func (s *MetricsService) UpdateByTypeAndName(ctx context.Context, newValue float64, mType, name string) error {

@@ -14,6 +14,7 @@ func Init(handler *handler.MetricsHandler) *gin.Engine {
 	router.Use(middleware.WithComparing)
 	router.POST("/update/:type/:name/:value", handler.AddHandler)
 	router.POST("/update/", handler.UpdateHandler)
+	router.POST("/updates/", handler.UpdatesHandler)
 	router.POST("/value/", handler.GetMetricHandler)
 	router.GET("/value/:type/:name", handler.GetMetricValueHandler)
 	router.GET("/", handler.GetListHandler)
