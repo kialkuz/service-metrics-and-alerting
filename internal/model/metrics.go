@@ -40,10 +40,6 @@ var StatsFields = []string{
 	"TotalAlloc",
 }
 
-var MetricsErrors = map[string]string{
-	"incorrect_type": "Incorrect metric type",
-}
-
 type Metrics struct {
 	ID    int      `json:"id"`
 	MType string   `json:"type"`

@@ -53,7 +53,7 @@ func NewMetricsHandler(
 }
 
 func (h *MetricsHandler) PingDB(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 1*time.Second)
 	defer cancel()
 	if err := h.metricsDBService.Ping(ctx); err != nil {
 		if errors.Is(err, pkgErrors.ErrNotInitDB) {

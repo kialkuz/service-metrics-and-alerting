@@ -7,10 +7,11 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/db"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/file"
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/memory"
+	migrations "kialkuz/service-metrics-and-alerting/internal/infrastructure/storage"
+	dbWrapper "kialkuz/service-metrics-and-alerting/internal/infrastructure/storage/postgresql"
 	"kialkuz/service-metrics-and-alerting/internal/server/handler"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pressly/goose/v3"
 
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
 
@@ -43,12 +44,12 @@ func NewApp(cfg *appConfig.Config) (*App, error) {
 			return nil, err
 		}
 
-		dbStorage := db.NewDBStorage(pool)
+		dbStorage := db.NewDBStorage(dbWrapper.NewDB(pool), pool)
 
 		storage = dbStorage
 		pinger = dbStorage
 
-		runMigrations(cfg.DB.DatabaseURI)
+		migrations.RunMigrations("pgx", cfg.DB.DatabaseURI)
 	} else {
 		storage = memory.NewMemoryStorage()
 	}
@@ -88,14 +89,4 @@ func restoreMetrics(fileStoragePath string, dbStorage service.MetricsRepository)
 	}
 
 	return nil
-}
-
-func runMigrations(dsn string) error {
-	db, err := goose.OpenDBWithDriver("pgx", dsn)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	return goose.Up(db, "migrations")
 }
