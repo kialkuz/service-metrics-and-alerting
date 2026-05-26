@@ -3,6 +3,7 @@ package errors
 import "errors"
 
 var (
-	ErrNotFound  = errors.New("metric not found")
-	ErrNotInitDB = errors.New("not initialized db")
+	ErrNotFound    = errors.New("metric not found")
+	ErrNotInitDB   = errors.New("not initialized db")
+	ErrSendMetrics = errors.New("error agent send metric")
 )
