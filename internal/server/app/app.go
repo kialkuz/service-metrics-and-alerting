@@ -24,7 +24,7 @@ type App struct {
 	FileService *service.FileService
 }
 
-func NewApp(cfg *appConfig.Config) (*App, error) {
+func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 	var (
 		storage service.MetricsRepository
 		pinger  *db.MemStorage
@@ -39,7 +39,7 @@ func NewApp(cfg *appConfig.Config) (*App, error) {
 	if cfg.DB.DatabaseURI != "" {
 		var err error
 
-		pool, err = pgxpool.New(context.Background(), cfg.DB.DatabaseURI)
+		pool, err = pgxpool.New(ctx, cfg.DB.DatabaseURI)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func NewApp(cfg *appConfig.Config) (*App, error) {
 	}
 
 	if cfg.Restore {
-		err = restoreMetrics(cfg.FileStoragePath, storage)
+		err = restoreMetrics(ctx, cfg.FileStoragePath, storage)
 		if err != nil {
 			return nil, fmt.Errorf("error restore metrics: %s", err.Error())
 		}
@@ -76,15 +76,13 @@ func NewApp(cfg *appConfig.Config) (*App, error) {
 	}, nil
 }
 
-func restoreMetrics(fileStoragePath string, dbStorage service.MetricsRepository) error {
+func restoreMetrics(ctx context.Context, fileStoragePath string, dbStorage service.MetricsRepository) error {
 	metrics, err := file.GetFromFile(fileStoragePath)
 	if err != nil {
 		return err
 	}
 
 	if len(metrics) > 0 {
-		ctx := context.Background()
-
 		dbStorage.AddList(ctx, metrics)
 	}
 

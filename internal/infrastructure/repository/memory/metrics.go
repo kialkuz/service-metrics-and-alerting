@@ -34,7 +34,7 @@ func (r *MemStorage) SaveList(
 	metricsForUpdate []model.Metrics,
 ) error {
 	r.AddList(ctx, metricsForInsert)
-	r.UpdateList(ctx, metricsForUpdate)
+	r.updateList(ctx, metricsForUpdate)
 
 	return nil
 }
@@ -63,7 +63,7 @@ func (r *MemStorage) Add(ctx context.Context, metric model.Metrics) error {
 	return nil
 }
 
-func (r *MemStorage) UpdateList(ctx context.Context, metrics []model.Metrics) error {
+func (r *MemStorage) updateList(ctx context.Context, metrics []model.Metrics) error {
 	for _, metric := range metrics {
 		r.list[metric.MType][metric.Name] = &metric
 	}

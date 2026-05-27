@@ -16,12 +16,15 @@ func main() {
 }
 
 func run() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	appConfigData, err := appConfig.NewConfig()
 	if err != nil {
 		return fmt.Errorf("error get configuration: %s", err.Error())
 	}
 
-	app, err := app.NewApp(appConfigData)
+	app, err := app.NewApp(ctx, appConfigData)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,9 +34,6 @@ func run() error {
 			app.Pool.Close()
 		}
 	}()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	go app.FileService.SaveWithInterval(ctx)
 

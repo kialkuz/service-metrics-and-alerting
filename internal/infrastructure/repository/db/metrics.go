@@ -14,7 +14,6 @@ import (
 type MemStorage struct {
 	db   *dbWrapper.DB
 	pool *pgxpool.Pool
-	tx   *pgx.Tx
 }
 
 func NewDBStorage(db *dbWrapper.DB, pool *pgxpool.Pool) *MemStorage {
@@ -29,34 +28,6 @@ func (r *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
-// func (r *MemStorage) SaveList(
-// 	ctx context.Context,
-// 	metricsForInsert []model.Metrics,
-// 	metricsForUpdate []model.Metrics,
-// ) error {
-// 	return r.db.WithTx(ctx, func(tx pgx.Tx) error {
-// 		var err error
-
-// 		if len(metricsForInsert) > 0 {
-// 			err = r.addListWithTransaction(ctx, tx, metricsForInsert)
-// 			if err != nil {
-// 				tx.Rollback(ctx)
-// 				return err
-// 			}
-// 		}
-
-// 		if len(metricsForUpdate) > 0 {
-// 			err = r.updateListWithTransaction(ctx, tx, metricsForUpdate)
-// 			if err != nil {
-// 				tx.Rollback(ctx)
-// 				return err
-// 			}
-// 		}
-
-// 		return err
-// 	})
-// }
-
 func (r *MemStorage) SaveList(
 	ctx context.Context,
 	metricsForInsert []model.Metrics,
@@ -67,10 +38,8 @@ func (r *MemStorage) SaveList(
 		return err
 	}
 
-	r.tx = &tx
-
 	if len(metricsForInsert) > 0 {
-		err = r.AddList(ctx, metricsForInsert)
+		err = r.addListWithTransaction(ctx, tx, metricsForInsert)
 		if err != nil {
 			tx.Rollback(ctx)
 			return err
@@ -78,7 +47,7 @@ func (r *MemStorage) SaveList(
 	}
 
 	if len(metricsForUpdate) > 0 {
-		err = r.UpdateList(ctx, metricsForUpdate)
+		err = r.updateListWithTransaction(ctx, tx, metricsForUpdate)
 		if err != nil {
 			tx.Rollback(ctx)
 			return err
@@ -88,11 +57,13 @@ func (r *MemStorage) SaveList(
 	return tx.Commit(ctx)
 }
 
-// func (r *MemStorage) addListWithTransaction(ctx context.Context, tx pgx.Tx, metrics []model.Metrics) error {
-// 	query, args := r.buildMultiInsertQuery(metrics)
+func (r *MemStorage) addListWithTransaction(ctx context.Context, tx pgx.Tx, metrics []model.Metrics) error {
+	query, args := r.buildMultiInsertQuery(metrics)
 
-// 	return r.db.ExecTx(ctx, tx, query, args...)
-// }
+	_, err := tx.Exec(ctx, query, args...)
+
+	return err
+}
 
 func (r *MemStorage) AddList(ctx context.Context, metrics []model.Metrics) error {
 	query, args := r.buildMultiInsertQuery(metrics)
@@ -125,17 +96,17 @@ func (r *MemStorage) buildMultiInsertQuery(metrics []model.Metrics) (string, []a
 	return fmt.Sprintf("INSERT INTO metrics (type, name, value, delta) VALUES %s", strings.Join(values, ",")), args
 }
 
-func (r *MemStorage) UpdateList(ctx context.Context, metrics []model.Metrics) error {
+func (r *MemStorage) updateListWithTransaction(ctx context.Context, tx pgx.Tx, metrics []model.Metrics) error {
 	for _, metric := range metrics {
 		var err error
 
 		switch metric.MType {
 		case model.Counter:
 			query := "UPDATE metrics SET delta = $1 WHERE id = $2"
-			err = r.db.Exec(ctx, query, *metric.Delta, metric.ID)
+			_, err = tx.Exec(ctx, query, *metric.Delta, metric.ID)
 		case model.Gauge:
 			query := "UPDATE metrics SET value = $1 WHERE id = $2"
-			err = r.db.Exec(ctx, query, *metric.Value, metric.ID)
+			_, err = tx.Exec(ctx, query, *metric.Value, metric.ID)
 		}
 
 		if err != nil {
