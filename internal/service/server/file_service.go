@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"log"
 	"sync"
@@ -59,6 +60,8 @@ func (p *FileService) Save() error {
 	defer mrw.RUnlock()
 
 	if len(metricsList) != 0 {
+		fmt.Println("3333333333333333333333")
+		fmt.Println(metricsList)
 		err := p.repository.CreateTemp()
 		if err != nil {
 			return err

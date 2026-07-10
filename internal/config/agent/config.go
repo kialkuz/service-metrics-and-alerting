@@ -4,6 +4,7 @@ type Config struct {
 	ReportInterval int
 	PollInterval   int
 	Key            string
+	RateLimit      int
 	URL            string
 }
 
@@ -17,6 +18,7 @@ func NewConfig() (*Config, error) {
 		ReportInterval: config.ReportInterval,
 		PollInterval:   config.PollInterval,
 		Key:            config.Key,
+		RateLimit:      config.RateLimit,
 		URL:            "http://" + config.Address,
 	}, nil
 }
