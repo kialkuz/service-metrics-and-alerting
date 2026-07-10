@@ -19,7 +19,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	services := service.NewMetricsService(config.URL)
+	services := service.NewMetricsService(config.URL, config.Key)
 	agent := agent.NewMetricsAgent(services)
 
 	err = agent.Collect(config.ReportInterval, config.PollInterval)

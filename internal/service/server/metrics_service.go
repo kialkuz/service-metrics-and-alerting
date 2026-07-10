@@ -50,12 +50,14 @@ func (s *MetricsService) GetGroupedByTypeAndName(ctx context.Context) (map[strin
 
 	metrics := make(map[string]map[string]model.Metrics)
 
-	for _, item := range items {
-		if _, exists := metrics[item.MType]; !exists {
-			metrics[item.MType] = make(map[string]model.Metrics)
-		}
+	if len(items) > 0 {
+		for _, item := range items {
+			if _, exists := metrics[item.MType]; !exists {
+				metrics[item.MType] = make(map[string]model.Metrics)
+			}
 
-		metrics[item.MType][item.Name] = item
+			metrics[item.MType][item.Name] = item
+		}
 	}
 
 	return metrics, nil
@@ -93,9 +95,14 @@ func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Met
 		existMetric, exists := existMetrics[metric.MType][metric.Name]
 
 		if !exists {
-			metricForInsert, existsInsert := preparedForInsert[metric.MType][metric.Name]
+			_, existsInsert := preparedForInsert[metric.MType]
+
 			if !existsInsert {
 				preparedForInsert[metric.MType] = make(map[string]model.Metrics)
+			}
+
+			metricForInsert, existsInsert := preparedForInsert[metric.MType][metric.Name]
+			if !existsInsert {
 				preparedForInsert[metric.MType][metric.Name] = metric
 			} else {
 				if metric.MType == model.Counter {
@@ -110,10 +117,11 @@ func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Met
 			}
 		} else {
 			if metric.MType == model.Counter {
-				newValue := *metric.Delta + *existMetric.Delta
-				existMetric.Delta = &newValue
+				newDelta := *metric.Delta + *existMetric.Delta
+				existMetric.Delta = &newDelta
 			} else {
-				existMetric.Value = metric.Value
+				newValue := *metric.Value
+				existMetric.Value = &newValue
 			}
 
 			metricsForUpdate = append(metricsForUpdate, existMetric)

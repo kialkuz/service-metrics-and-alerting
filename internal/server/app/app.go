@@ -9,7 +9,9 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/memory"
 	migrations "kialkuz/service-metrics-and-alerting/internal/infrastructure/storage"
 	dbWrapper "kialkuz/service-metrics-and-alerting/internal/infrastructure/storage/postgresql"
+	"kialkuz/service-metrics-and-alerting/internal/model"
 	"kialkuz/service-metrics-and-alerting/internal/server/handler"
+	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -54,8 +56,10 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		storage = memory.NewMemoryStorage()
 	}
 
+	metricsService := service.NewMetricsService(storage)
+
 	if cfg.Restore {
-		err = restoreMetrics(ctx, cfg.FileStoragePath, storage)
+		err = restoreMetrics(ctx, cfg.FileStoragePath, storage, metricsService)
 		if err != nil {
 			return nil, fmt.Errorf("error restore metrics: %s", err.Error())
 		}
@@ -64,7 +68,7 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 	fileService := service.NewFileService(fileStorage, cfg.StoreInterval)
 
 	handler := handler.NewMetricsHandler(
-		service.NewMetricsService(storage),
+		metricsService,
 		fileService,
 		service.NewPingerService(pinger),
 	)
@@ -76,14 +80,31 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 	}, nil
 }
 
-func restoreMetrics(ctx context.Context, fileStoragePath string, dbStorage service.MetricsRepository) error {
-	metrics, err := file.GetFromFile(fileStoragePath)
+func restoreMetrics(
+	ctx context.Context,
+	fileStoragePath string,
+	dbStorage service.MetricsRepository,
+	metricsService pkgContracts.MetricsService,
+) error {
+	fileMetrics, err := file.GetFromFile(fileStoragePath)
 	if err != nil {
 		return err
 	}
 
-	if len(metrics) > 0 {
-		dbStorage.AddList(ctx, metrics)
+	if len(fileMetrics) > 0 {
+		existMetrics, err := metricsService.GetGroupedByTypeAndName(ctx)
+		if err != nil {
+			return err
+		}
+
+		var preparedMetrics []model.Metrics
+		for _, fileMetric := range fileMetrics {
+			if _, ok := existMetrics[fileMetric.MType][fileMetric.Name]; !ok {
+				preparedMetrics = append(preparedMetrics, fileMetric)
+			}
+		}
+
+		dbStorage.AddList(ctx, preparedMetrics)
 	}
 
 	return nil

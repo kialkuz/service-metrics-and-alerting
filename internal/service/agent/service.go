@@ -2,11 +2,13 @@ package agent
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"kialkuz/service-metrics-and-alerting/internal/service/compress"
+	signService "kialkuz/service-metrics-and-alerting/internal/service/sign"
 	"log"
 	"maps"
 	"math/rand/v2"
@@ -27,10 +29,11 @@ type MetricsAgentService interface {
 //go:generate go run go.uber.org/mock/mockgen -source=service.go -destination=mocks/service_mock.go -package=mocks -typed
 type MetricsService struct {
 	url string
+	key string
 }
 
-func NewMetricsService(url string) *MetricsService {
-	return &MetricsService{url: url}
+func NewMetricsService(url, key string) *MetricsService {
+	return &MetricsService{url: url, key: key}
 }
 
 func (s *MetricsService) CollectCounter() map[string]int64 {
@@ -118,6 +121,9 @@ func (s *MetricsService) SendJSONBody(jsonData []byte, path string) (*http.Respo
 
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Add("Content-Encoding", "gzip")
+	if s.key != "" {
+		request.Header.Add("HashSHA256", hex.EncodeToString(signService.Generate(jsonData, s.key)))
+	}
 
 	response, err := client.Do(request)
 	if err != nil {
