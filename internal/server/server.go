@@ -1,8 +1,8 @@
-package server
+package init
 
 import (
-	"kialkuz/service-metrics-and-alerting/internal/handler"
 	"kialkuz/service-metrics-and-alerting/internal/router"
+	"kialkuz/service-metrics-and-alerting/internal/server/handler"
 	"net/http"
 	"time"
 )

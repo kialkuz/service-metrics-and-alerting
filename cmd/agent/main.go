@@ -9,12 +9,23 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	config, err := appConfig.NewConfig()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	services := service.NewMetricsService(config.URL)
 	agent := agent.NewMetricsAgent(services)
 
-	agent.Collect(config.ReportInterval, config.PollInterval)
+	err = agent.Collect(config.ReportInterval, config.PollInterval)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

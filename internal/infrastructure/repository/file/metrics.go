@@ -8,12 +8,20 @@ import (
 	"os"
 )
 
-type Saver struct {
+type FileStorage struct {
 	file   *os.File
 	config *server.Config
 }
 
-func (p *Saver) CreateTemp() error {
+func NewFileStorage(config *server.Config) (*FileStorage, error) {
+	if err := os.MkdirAll(config.FileStoragePath, 0644); err != nil {
+		return nil, fmt.Errorf("cannot create folder: %w", err)
+	}
+
+	return &FileStorage{config: config}, nil
+}
+
+func (p *FileStorage) CreateTemp() error {
 	file, err := os.CreateTemp(p.config.FileStoragePath, "*")
 	if err != nil {
 		return err
@@ -24,7 +32,7 @@ func (p *Saver) CreateTemp() error {
 	return nil
 }
 
-func (p *Saver) WriteMetric(metric *model.Metrics) error {
+func (p *FileStorage) WriteMetric(metric *model.Metrics) error {
 	data, err := json.Marshal(&metric)
 	if err != nil {
 		return err
@@ -39,7 +47,7 @@ func (p *Saver) WriteMetric(metric *model.Metrics) error {
 	return err
 }
 
-func (p *Saver) SaveOriginal() error {
+func (p *FileStorage) SaveOriginal() error {
 	if p.file != nil {
 		p.file.Close()
 

@@ -24,7 +24,7 @@ func WithLogging(c *gin.Context) {
 
 	if len(c.Errors) > 0 {
 		for _, err := range c.Errors {
-			sugar.Fatal(err)
+			sugar.Error(err)
 		}
 	}
 

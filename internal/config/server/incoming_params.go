@@ -13,6 +13,7 @@ const (
 	defaultStoreInterval   = 300
 	defaultFileStoragePath = "./storage"
 	defaultRestore         = false
+	defaultDatabaseDSN     = ""
 )
 
 type incomingParams struct {
@@ -21,6 +22,7 @@ type incomingParams struct {
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
 func GetIncomingParams() (*incomingParams, error) {
@@ -30,12 +32,14 @@ func GetIncomingParams() (*incomingParams, error) {
 		StoreInterval:   defaultStoreInterval,
 		FileStoragePath: defaultFileStoragePath,
 		Restore:         defaultRestore,
+		DatabaseDSN:     defaultDatabaseDSN,
 	}
 
 	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server address")
 	flag.IntVar(&cfg.StoreInterval, "i", cfg.StoreInterval, "store interval")
 	flag.StringVar(&cfg.FileStoragePath, "f", cfg.FileStoragePath, "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "restore")
+	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "database dsn")
 	flag.Parse()
 
 	err := env.Parse(cfg)

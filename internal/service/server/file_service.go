@@ -2,26 +2,26 @@ package server
 
 import (
 	"context"
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/repository/file"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"log"
 	"time"
 )
 
-type MetricsFileService interface {
-	SetMetric(name string, metric model.Metrics)
-	Save() error
+type MetricsFileRepository interface {
+	CreateTemp() error
+	WriteMetric(metric *model.Metrics) error
+	SaveOriginal() error
 }
 
 var metricsList map[string]model.Metrics
 var now time.Time
 
 type FileService struct {
-	repository    file.MetricsFileRepository
+	repository    MetricsFileRepository
 	storeInterval int
 }
 
-func NewFileService(repository file.MetricsFileRepository, storeInterval int) *FileService {
+func NewFileService(repository MetricsFileRepository, storeInterval int) *FileService {
 	now = time.Now()
 	metricsList = make(map[string]model.Metrics)
 
