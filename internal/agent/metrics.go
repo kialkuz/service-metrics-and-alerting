@@ -23,7 +23,6 @@ var additionalReplaySendInterval = map[int]int{
 
 type MetricsAgent struct {
 	metricsService service.MetricsAgentService
-	metrics        chan dto.Metrics
 }
 
 func NewMetricsAgent(metricsService service.MetricsAgentService) *MetricsAgent {
@@ -51,12 +50,21 @@ func (a *MetricsAgent) CollectAndSend(reportInterval, pollInterval, rateLimit in
 			return err
 		case <-ticker.C:
 			if time.Now().After(now.Add(time.Duration(reportInterval) * time.Second)) {
-				a.metrics = make(chan dto.Metrics, rateLimit)
+				metrics := make(chan dto.Metrics, rateLimit)
 
-				go a.collect(a.metrics)
+				g.Go(func() error {
+					metrics, err = a.collect(metrics)
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
 
 				for w := 1; w <= rateLimit; w++ {
-					g.Go(a.send)
+					g.Go(func() error {
+						return a.send(metrics)
+					})
 				}
 
 				if err := g.Wait(); err != nil {
@@ -69,7 +77,7 @@ func (a *MetricsAgent) CollectAndSend(reportInterval, pollInterval, rateLimit in
 	}
 }
 
-func (a *MetricsAgent) collect(metrics chan<- dto.Metrics) {
+func (a *MetricsAgent) collect(metrics chan dto.Metrics) (chan dto.Metrics, error) {
 	defer close(metrics)
 
 	for fieldName, fieldValue := range a.metricsService.CollectCounter() {
@@ -80,17 +88,23 @@ func (a *MetricsAgent) collect(metrics chan<- dto.Metrics) {
 		}
 	}
 
-	for fieldName, fieldValue := range a.metricsService.CollectGauge() {
+	gaugeMetrics, err := a.metricsService.CollectGauge()
+	if err != nil {
+		return nil, err
+	}
+	for fieldName, fieldValue := range gaugeMetrics {
 		metrics <- dto.Metrics{
 			ID:    fieldName,
 			MType: model.Gauge,
 			Value: &fieldValue,
 		}
 	}
+
+	return metrics, nil
 }
 
-func (a *MetricsAgent) send() error {
-	for metric := range a.metrics {
+func (a *MetricsAgent) send(metrics <-chan dto.Metrics) error {
+	for metric := range metrics {
 		_, err := a.metricsService.SendSingleMetric(metric)
 		if errors.Is(err, pkgErrors.ErrSendMetrics) {
 			for i := 1; i <= defaultCountAdditionalReplaySendMetrics; i++ {

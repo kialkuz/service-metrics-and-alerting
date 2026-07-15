@@ -14,6 +14,7 @@ func Init(handler *handler.MetricsHandler, config *server.Config) *gin.Engine {
 	router.Use(middleware.WithLogging)
 	router.Use(middleware.WithComparing)
 	router.Use(middleware.WithSign(config.Key))
+	router.Use(middleware.WithResponseSign(config.Key))
 	router.POST("/update/:type/:name/:value", handler.AddHandler)
 	router.POST("/update/", handler.UpdateHandler)
 	router.POST("/updates/", handler.UpdatesHandler)

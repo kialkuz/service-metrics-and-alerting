@@ -15,6 +15,11 @@ func WithSign(key string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		signForCheck := c.GetHeader("HashSHA256")
 
+		if key != "" && signForCheck == "" {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
 		if signForCheck != "" {
 			expectedHash, err := hex.DecodeString(signForCheck)
 			if err != nil {

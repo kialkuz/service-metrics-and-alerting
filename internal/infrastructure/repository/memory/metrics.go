@@ -7,28 +7,18 @@ import (
 	"sync"
 )
 
-//go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_mock.go -package=mocks -typed
-type MetricsMemoryRepository interface {
-	Add(ctx context.Context, metric model.Metrics) error
-	AddList(ctx context.Context, metrics []model.Metrics) error
-	SaveList(ctx context.Context, metricsForInsert []model.Metrics, metricsForUpdate []model.Metrics) error
-	UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error
-	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
-	GetList(ctx context.Context) ([]model.Metrics, error)
-}
-
 type MemStorage struct {
+	mrw  sync.RWMutex
 	list map[string]map[string]*model.Metrics
 }
 
-func NewMemoryStorage() MetricsMemoryRepository {
+func NewMemoryStorage() *MemStorage {
 	list := make(map[string]map[string]*model.Metrics)
 
 	return &MemStorage{list: list}
 }
 
 var id = 1
-var mrw sync.RWMutex
 
 func (r *MemStorage) SaveList(
 	ctx context.Context,
@@ -52,8 +42,8 @@ func (r *MemStorage) AddList(ctx context.Context, metrics []model.Metrics) error
 }
 
 func (r *MemStorage) Add(ctx context.Context, metric model.Metrics) error {
-	mrw.Lock()
-	defer mrw.Unlock()
+	r.mrw.Lock()
+	defer r.mrw.Unlock()
 
 	metric.ID = id
 
@@ -69,8 +59,8 @@ func (r *MemStorage) Add(ctx context.Context, metric model.Metrics) error {
 }
 
 func (r *MemStorage) updateList(ctx context.Context, metrics []model.Metrics) error {
-	mrw.Lock()
-	defer mrw.Unlock()
+	r.mrw.Lock()
+	defer r.mrw.Unlock()
 
 	for _, metric := range metrics {
 		r.list[metric.MType][metric.Name] = &metric
@@ -80,8 +70,8 @@ func (r *MemStorage) updateList(ctx context.Context, metrics []model.Metrics) er
 }
 
 func (r *MemStorage) UpdateByTypeAndName(ctx context.Context, value float64, metricType, name string) error {
-	mrw.Lock()
-	defer mrw.Unlock()
+	r.mrw.Lock()
+	defer r.mrw.Unlock()
 
 	metrics := r.list[metricType][name]
 	if metricType == model.Counter {
@@ -98,8 +88,8 @@ func (r *MemStorage) UpdateByTypeAndName(ctx context.Context, value float64, met
 }
 
 func (r *MemStorage) Get(ctx context.Context, metricType, name string) (*model.Metrics, error) {
-	mrw.RLock()
-	defer mrw.RUnlock()
+	r.mrw.RLock()
+	defer r.mrw.RUnlock()
 
 	if metric, ok := r.list[metricType][name]; ok {
 		return metric, nil
@@ -109,8 +99,8 @@ func (r *MemStorage) Get(ctx context.Context, metricType, name string) (*model.M
 }
 
 func (r *MemStorage) GetList(ctx context.Context) ([]model.Metrics, error) {
-	mrw.RLock()
-	defer mrw.RUnlock()
+	r.mrw.RLock()
+	defer r.mrw.RUnlock()
 
 	var metrics []model.Metrics
 

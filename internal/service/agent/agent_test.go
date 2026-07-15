@@ -13,6 +13,8 @@ func TestCollectMetrics(t *testing.T) {
 
 	service := NewMetricsService("test_url", "")
 
+	gaugeMetrics, err := service.CollectGauge()
 	assert.NotEmpty(t, service.CollectCounter())
-	assert.NotEmpty(t, service.CollectGauge())
+	assert.Empty(t, err)
+	assert.NotEmpty(t, gaugeMetrics)
 }
