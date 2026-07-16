@@ -16,6 +16,7 @@ type Config struct {
 	StoreInterval   int
 	FileStoragePath string
 	Restore         bool
+	Key             string
 }
 
 func NewConfig() (*Config, error) {
@@ -39,5 +40,6 @@ func NewConfig() (*Config, error) {
 		StoreInterval:   config.StoreInterval,
 		FileStoragePath: config.FileStoragePath,
 		Restore:         config.Restore,
+		Key:             config.Key,
 	}, nil
 }

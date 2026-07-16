@@ -24,21 +24,21 @@ func run() error {
 		return fmt.Errorf("error get configuration: %s", err.Error())
 	}
 
-	app, err := app.NewApp(ctx, appConfigData)
+	appServer, err := app.NewApp(ctx, appConfigData)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer func() {
-		if app.Pool != nil {
-			app.Pool.Close()
+		if appServer.Pool != nil {
+			appServer.Pool.Close()
 		}
 	}()
 
-	go app.FileService.SaveWithInterval(ctx)
+	go appServer.FileService.SaveWithInterval(ctx)
 
 	fmt.Println("Server running on port ", appConfigData.ServerPort)
-	newServer := serverInit.NewServer(app.Handler, appConfigData.ServerPort)
+	newServer := serverInit.NewServer(appServer.Handler, appConfigData)
 	err = newServer.ListenAndServe()
 	if err != nil {
 		return fmt.Errorf("error starting server: %s", err.Error())

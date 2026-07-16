@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
+	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
 	"net/http"
 	"slices"
@@ -17,14 +18,6 @@ import (
 
 const timeout = 10
 
-type MetricsServerService interface {
-	SaveMetric(ctx context.Context, metrics model.Metrics) error
-	SaveMetricList(ctx context.Context, metrics []model.Metrics) error
-	Get(ctx context.Context, metricType, name string) (*model.Metrics, error)
-	GetList(ctx context.Context) ([]model.Metrics, error)
-	UpdateByTypeAndName(ctx context.Context, newValue float64, mType, name string) error
-}
-
 type MetricsFileService interface {
 	SetMetric(name string, metric model.Metrics)
 	Save() error
@@ -35,13 +28,13 @@ type Pinger interface {
 }
 
 type MetricsHandler struct {
-	metricsService     MetricsServerService
+	metricsService     pkgContracts.MetricsService
 	metricsFileService MetricsFileService
 	metricsDBService   Pinger
 }
 
 func NewMetricsHandler(
-	metricsService MetricsServerService,
+	metricsService pkgContracts.MetricsService,
 	metricsFileService MetricsFileService,
 	metricsDBService Pinger,
 ) *MetricsHandler {
@@ -57,7 +50,7 @@ func (h *MetricsHandler) PingDB(c *gin.Context) {
 	defer cancel()
 	if err := h.metricsDBService.Ping(ctx); err != nil {
 		if errors.Is(err, pkgErrors.ErrNotInitDB) {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Not initialized db"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Not initialized db"})
 			return
 		}
 

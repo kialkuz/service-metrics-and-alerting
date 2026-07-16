@@ -14,6 +14,7 @@ const (
 	defaultFileStoragePath = "./storage"
 	defaultRestore         = false
 	defaultDatabaseDSN     = ""
+	defaultKey             = ""
 )
 
 type incomingParams struct {
@@ -23,6 +24,7 @@ type incomingParams struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
 }
 
 func GetIncomingParams() (*incomingParams, error) {
@@ -33,6 +35,7 @@ func GetIncomingParams() (*incomingParams, error) {
 		FileStoragePath: defaultFileStoragePath,
 		Restore:         defaultRestore,
 		DatabaseDSN:     defaultDatabaseDSN,
+		Key:             defaultKey,
 	}
 
 	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server address")
@@ -40,6 +43,7 @@ func GetIncomingParams() (*incomingParams, error) {
 	flag.StringVar(&cfg.FileStoragePath, "f", cfg.FileStoragePath, "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "restore")
 	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "database dsn")
+	flag.StringVar(&cfg.Key, "k", cfg.Key, "query sign")
 	flag.Parse()
 
 	err := env.Parse(cfg)

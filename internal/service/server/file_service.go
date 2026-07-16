@@ -4,6 +4,7 @@ import (
 	"context"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,7 @@ var metricsList map[string]model.Metrics
 var now time.Time
 
 type FileService struct {
+	mrw           sync.RWMutex
 	repository    MetricsFileRepository
 	storeInterval int
 }
@@ -29,6 +31,9 @@ func NewFileService(repository MetricsFileRepository, storeInterval int) *FileSe
 }
 
 func (p *FileService) SetMetric(name string, metric model.Metrics) {
+	p.mrw.Lock()
+	defer p.mrw.Unlock()
+
 	metricsList[name] = metric
 }
 
@@ -50,6 +55,9 @@ func (p *FileService) SaveWithInterval(ctx context.Context) {
 }
 
 func (p *FileService) Save() error {
+	p.mrw.RLock()
+	defer p.mrw.RUnlock()
+
 	if len(metricsList) != 0 {
 		err := p.repository.CreateTemp()
 		if err != nil {

@@ -2,22 +2,28 @@ package agent
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"kialkuz/service-metrics-and-alerting/internal/service/compress"
+	signService "kialkuz/service-metrics-and-alerting/internal/service/sign"
 	"log"
 	"maps"
 	"math/rand/v2"
 	"net/http"
 	"reflect"
 	"runtime"
+
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 )
 
 type MetricsAgentService interface {
 	CollectCounter() map[string]int64
-	CollectGauge() map[string]float64
+	CollectGauge() (map[string]float64, error)
 	SendSingleMetric(value dto.Metrics) (*http.Response, error)
 	SendListMetrics(value []dto.Metrics) (*http.Response, error)
 	SendJSONBody(jsonData []byte, path string) (*http.Response, error)
@@ -27,10 +33,11 @@ type MetricsAgentService interface {
 //go:generate go run go.uber.org/mock/mockgen -source=service.go -destination=mocks/service_mock.go -package=mocks -typed
 type MetricsService struct {
 	url string
+	key string
 }
 
-func NewMetricsService(url string) *MetricsService {
-	return &MetricsService{url: url}
+func NewMetricsService(url, key string) *MetricsService {
+	return &MetricsService{url: url, key: key}
 }
 
 func (s *MetricsService) CollectCounter() map[string]int64 {
@@ -41,13 +48,19 @@ func (s *MetricsService) CollectCounter() map[string]int64 {
 	return fields
 }
 
-func (s *MetricsService) CollectGauge() map[string]float64 {
+func (s *MetricsService) CollectGauge() (map[string]float64, error) {
 	fields := map[string]float64{
 		"RandomValue": rand.Float64(),
 	}
 	maps.Insert(fields, maps.All(s.collectMemStats()))
 
-	return fields
+	systemMetrics, err := s.getSystemMetrics()
+	if err != nil {
+		return nil, err
+	}
+	maps.Insert(fields, maps.All(systemMetrics))
+
+	return fields, nil
 }
 
 func (s *MetricsService) collectMemStats() map[string]float64 {
@@ -73,6 +86,28 @@ func (s *MetricsService) collectMemStats() map[string]float64 {
 	}
 
 	return statsFields
+}
+
+func (s *MetricsService) getSystemMetrics() (map[string]float64, error) {
+	v, _ := mem.VirtualMemory()
+
+	metrics := make(map[string]float64)
+
+	metrics["TotalMemory"] = float64(v.Total)
+	metrics["FreeMemory"] = float64(v.Free)
+
+	c, err := cpu.Percent(0, true)
+	if err != nil {
+		return nil, errors.New("failed to collect cpu metrics")
+	}
+
+	cpuCount := 0
+	for i, percent := range c {
+		metrics[fmt.Sprintf("CPUutilization%d", i+1)] = percent
+		cpuCount++
+	}
+
+	return metrics, nil
 }
 
 func (s *MetricsService) SendSingleMetric(value dto.Metrics) (*http.Response, error) {
@@ -118,6 +153,9 @@ func (s *MetricsService) SendJSONBody(jsonData []byte, path string) (*http.Respo
 
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Add("Content-Encoding", "gzip")
+	if s.key != "" {
+		request.Header.Add("HashSHA256", hex.EncodeToString(signService.Generate(jsonData, s.key)))
+	}
 
 	response, err := client.Do(request)
 	if err != nil {

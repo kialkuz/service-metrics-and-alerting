@@ -12,6 +12,7 @@ func GetFromFile(fileStoragePath string) ([]model.Metrics, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	var metricsList []model.Metrics
 
@@ -30,8 +31,6 @@ func GetFromFile(fileStoragePath string) ([]model.Metrics, error) {
 
 			metricsList = append(metricsList, metrics)
 		}
-
-		file.Close()
 	}
 
 	return metricsList, nil

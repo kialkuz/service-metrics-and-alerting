@@ -3,13 +3,14 @@ package agent
 import (
 	"context"
 	"errors"
-	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	service "kialkuz/service-metrics-and-alerting/internal/service/agent"
 	"time"
 
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const defaultCountAdditionalReplaySendMetrics = 3
@@ -30,7 +31,7 @@ func NewMetricsAgent(metricsService service.MetricsAgentService) *MetricsAgent {
 	}
 }
 
-func (a *MetricsAgent) Collect(reportInterval, pollInterval int) error {
+func (a *MetricsAgent) CollectAndSend(reportInterval, pollInterval, rateLimit int) error {
 	var err error
 
 	now := time.Now()
@@ -41,27 +42,33 @@ func (a *MetricsAgent) Collect(reportInterval, pollInterval int) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	g := new(errgroup.Group)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return err
 		case <-ticker.C:
 			if time.Now().After(now.Add(time.Duration(reportInterval) * time.Second)) {
-				err = a.send()
+				metrics := make(chan dto.Metrics, rateLimit)
 
-				if errors.Is(err, pkgErrors.ErrSendMetrics) {
-					for i := 1; i <= defaultCountAdditionalReplaySendMetrics; i++ {
-						timer := time.NewTimer(time.Duration(additionalReplaySendInterval[i]) * time.Second)
-						<-timer.C
-
-						if err = a.send(); err == nil {
-							break
-						}
-					}
-
+				g.Go(func() error {
+					metrics, err = a.collect(metrics)
 					if err != nil {
-						cancel()
+						return err
 					}
+
+					return nil
+				})
+
+				for w := 1; w <= rateLimit; w++ {
+					g.Go(func() error {
+						return a.send(metrics)
+					})
+				}
+
+				if err := g.Wait(); err != nil {
+					cancel()
 				}
 
 				now = time.Now()
@@ -70,29 +77,48 @@ func (a *MetricsAgent) Collect(reportInterval, pollInterval int) error {
 	}
 }
 
-func (a *MetricsAgent) send() error {
-	var metricsForSend []dto.Metrics
+func (a *MetricsAgent) collect(metrics chan dto.Metrics) (chan dto.Metrics, error) {
+	defer close(metrics)
 
 	for fieldName, fieldValue := range a.metricsService.CollectCounter() {
-		metricsForSend = append(metricsForSend, dto.Metrics{
+		metrics <- dto.Metrics{
 			ID:    fieldName,
 			MType: model.Counter,
 			Delta: &fieldValue,
-		})
+		}
 	}
 
-	for fieldName, fieldValue := range a.metricsService.CollectGauge() {
-		metricsForSend = append(metricsForSend, dto.Metrics{
+	gaugeMetrics, err := a.metricsService.CollectGauge()
+	if err != nil {
+		return nil, err
+	}
+	for fieldName, fieldValue := range gaugeMetrics {
+		metrics <- dto.Metrics{
 			ID:    fieldName,
 			MType: model.Gauge,
 			Value: &fieldValue,
-		})
+		}
 	}
 
-	if len(metricsForSend) > 0 {
-		_, err := a.metricsService.SendListMetrics(metricsForSend)
-		if err != nil {
-			return fmt.Errorf("%w: %w", pkgErrors.ErrSendMetrics, err)
+	return metrics, nil
+}
+
+func (a *MetricsAgent) send(metrics <-chan dto.Metrics) error {
+	for metric := range metrics {
+		_, err := a.metricsService.SendSingleMetric(metric)
+		if errors.Is(err, pkgErrors.ErrSendMetrics) {
+			for i := 1; i <= defaultCountAdditionalReplaySendMetrics; i++ {
+				timer := time.NewTimer(time.Duration(additionalReplaySendInterval[i]) * time.Second)
+				<-timer.C
+
+				if _, err = a.metricsService.SendSingleMetric(metric); err == nil {
+					break
+				}
+			}
+
+			if err != nil {
+				return err
+			}
 		}
 	}
 
