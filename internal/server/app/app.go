@@ -13,6 +13,9 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/server/handler"
 	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
 
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/publisher"
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
@@ -21,9 +24,11 @@ import (
 )
 
 type App struct {
-	Handler     *handler.MetricsHandler
-	Pool        *pgxpool.Pool
-	FileService *service.FileService
+	Handler       *handler.MetricsHandler
+	Pool          *pgxpool.Pool
+	FileService   *service.FileService
+	LogsPublisher publisher.Publisher
+	AuditService  *service.AuditService
 }
 
 func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
@@ -56,6 +61,13 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		storage = memory.NewMemoryStorage()
 	}
 
+	auditService := service.NewAuditService()
+
+	logsPublisher, err := getLogsPublisher(cfg, auditService)
+	if err != nil {
+		return nil, fmt.Errorf("error prepare logs publisher: %s", err.Error())
+	}
+
 	metricsService := service.NewMetricsService(storage)
 
 	if cfg.Restore {
@@ -71,12 +83,15 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		metricsService,
 		fileService,
 		service.NewPingerService(pinger),
+		auditService,
 	)
 
 	return &App{
-		Handler:     handler,
-		Pool:        pool,
-		FileService: fileService,
+		Handler:       handler,
+		Pool:          pool,
+		FileService:   fileService,
+		AuditService:  auditService,
+		LogsPublisher: logsPublisher,
 	}, nil
 }
 
@@ -108,4 +123,25 @@ func restoreMetrics(
 	}
 
 	return nil
+}
+
+func getLogsPublisher(cfg *appConfig.Config, auditService *service.AuditService) (publisher.Publisher, error) {
+	logsPublisher := publisher.NewLogsPublisher(auditService)
+
+	if cfg.AuditFile != "" {
+		subscriberAuditFile, err := subscriber.NewAuditFile(cfg.AuditFile)
+		if err != nil {
+			return nil, err
+		}
+		logsPublisher.Register(subscriberAuditFile)
+	}
+	if cfg.AuditUrl != "" {
+		subscriberAuditUrl, err := subscriber.NewAuditUrl(cfg.AuditUrl)
+		if err != nil {
+			return nil, err
+		}
+		logsPublisher.Register(subscriberAuditUrl)
+	}
+
+	return logsPublisher, nil
 }

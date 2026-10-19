@@ -36,6 +36,7 @@ func run() error {
 	}()
 
 	go appServer.FileService.SaveWithInterval(ctx)
+	go appServer.LogsPublisher.SaveWithInterval(ctx)
 
 	fmt.Println("Server running on port ", appConfigData.ServerPort)
 	newServer := serverInit.NewServer(appServer.Handler, appConfigData)
