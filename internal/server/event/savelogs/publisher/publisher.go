@@ -50,9 +50,9 @@ func (p *LogsPublisher) SaveWithInterval(ctx context.Context) {
 			return
 		default:
 			err := p.save(savelogs.Event{
-				Ts:        time.Now().Unix(),
+				TS:        time.Now().Unix(),
 				Metrics:   p.auditService.GetMetrics(),
-				IpAddress: p.auditService.GetIp(),
+				IPAddress: p.auditService.GetIP(),
 			})
 			if err != nil {
 				log.Println("Error saving metrics logs:", err)

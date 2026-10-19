@@ -17,7 +17,7 @@ type Config struct {
 	Restore         bool
 	Key             string
 	AuditFile       string
-	AuditUrl        string
+	AuditURL        string
 }
 
 func NewConfig() (*Config, error) {
@@ -42,6 +42,6 @@ func NewConfig() (*Config, error) {
 		Restore:         config.Restore,
 		Key:             config.Key,
 		AuditFile:       config.AuditFile,
-		AuditUrl:        config.AuditUrl,
+		AuditURL:        config.AuditURL,
 	}, nil
 }

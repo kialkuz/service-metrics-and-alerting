@@ -2,11 +2,11 @@ package savelogs
 
 const (
 	AuditFile = "file"
-	AuditUrl  = "url"
+	AuditURL  = "url"
 )
 
 type Event struct {
-	Ts        int64    `json:"ts"`
+	TS        int64    `json:"ts"`
 	Metrics   []string `json:"metrics"`
-	IpAddress string   `json:"ipAddress"`
+	IPAddress string   `json:"ipAddress"`
 }

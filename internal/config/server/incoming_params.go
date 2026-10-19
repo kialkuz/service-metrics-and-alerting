@@ -15,7 +15,7 @@ const (
 	defaultDatabaseDSN     = ""
 	defaultKey             = ""
 	defaultAuditFile       = ""
-	defaultAuditUrl        = ""
+	defaultAuditURL        = ""
 )
 
 type incomingParams struct {
@@ -26,7 +26,7 @@ type incomingParams struct {
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	Key             string `env:"KEY"`
 	AuditFile       string `env:"AUDIT_FILE"`
-	AuditUrl        string `env:"AUDIT_URL"`
+	AuditURL        string `env:"AUDIT_URL"`
 }
 
 func GetIncomingParams() (*incomingParams, error) {
@@ -38,7 +38,7 @@ func GetIncomingParams() (*incomingParams, error) {
 		DatabaseDSN:     defaultDatabaseDSN,
 		Key:             defaultKey,
 		AuditFile:       defaultAuditFile,
-		AuditUrl:        defaultAuditUrl,
+		AuditURL:        defaultAuditURL,
 	}
 
 	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server address")
@@ -48,7 +48,7 @@ func GetIncomingParams() (*incomingParams, error) {
 	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "database dsn")
 	flag.StringVar(&cfg.Key, "k", cfg.Key, "query sign")
 	flag.StringVar(&cfg.AuditFile, "audit-file", cfg.AuditFile, "audit file")
-	flag.StringVar(&cfg.AuditUrl, "audit-url", cfg.AuditUrl, "audit Url")
+	flag.StringVar(&cfg.AuditURL, "audit-url", cfg.AuditURL, "audit Url")
 	flag.Parse()
 
 	err := env.Parse(cfg)

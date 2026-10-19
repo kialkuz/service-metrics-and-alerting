@@ -10,21 +10,21 @@ import (
 	"net/http"
 )
 
-type AuditUrl struct {
+type AuditURL struct {
 	Audit
 }
 
-func NewAuditUrl(savePath string) (*AuditUrl, error) {
+func NewAuditURL(savePath string) (*AuditURL, error) {
 	if !service.IsFileName(savePath) {
-		return nil, pkgErrors.ErrNotFIleName
+		return nil, pkgErrors.ErrNotURL
 	}
 
-	audit := Audit{AuditType: savelogs.AuditUrl, SavePath: savePath}
+	audit := Audit{AuditType: savelogs.AuditURL, SavePath: savePath}
 
-	return &AuditUrl{Audit: audit}, nil
+	return &AuditURL{Audit: audit}, nil
 }
 
-func (a AuditUrl) Save(event savelogs.Event) error {
+func (a AuditURL) Save(event savelogs.Event) error {
 	jsonData, err := json.MarshalIndent(event, "", " ")
 	if err != nil {
 		return fmt.Errorf("ошибка сериализации JSON: %w", err)
@@ -33,7 +33,7 @@ func (a AuditUrl) Save(event savelogs.Event) error {
 	return a.sendJSONBody(jsonData, a.SavePath)
 }
 
-func (a AuditUrl) sendJSONBody(jsonData []byte, path string) error {
+func (a AuditURL) sendJSONBody(jsonData []byte, path string) error {
 	client := &http.Client{}
 	request, err := http.NewRequest(http.MethodPost, path, bytes.NewReader(jsonData))
 	if err != nil {

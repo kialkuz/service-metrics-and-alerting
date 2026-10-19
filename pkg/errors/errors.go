@@ -7,5 +7,5 @@ var (
 	ErrNotInitDB   = errors.New("not initialized db")
 	ErrSendMetrics = errors.New("error agent send metric")
 	ErrNotFIleName = errors.New("error not fIle name")
-	ErrNotUrl      = errors.New("error not url")
+	ErrNotURL      = errors.New("error not url")
 )

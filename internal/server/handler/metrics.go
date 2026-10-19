@@ -24,7 +24,7 @@ type MetricsFileService interface {
 }
 
 type AuditService interface {
-	SetIp(ip string)
+	SetIP(ip string)
 	SetMetric(name string)
 }
 
@@ -169,7 +169,7 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 	}
 
 	h.metricsFileService.SetMetric(metrics.Name, *item)
-	h.auditService.SetIp(c.RemoteIP())
+	h.auditService.SetIP(c.RemoteIP())
 	h.auditService.SetMetric(metrics.Name)
 
 	c.Status(http.StatusOK)
@@ -234,7 +234,7 @@ func (h *MetricsHandler) UpdatesHandler(c *gin.Context) {
 
 	for _, dbMetric := range dbMetrics {
 		h.metricsFileService.SetMetric(dbMetric.Name, dbMetric)
-		h.auditService.SetIp(c.RemoteIP())
+		h.auditService.SetIP(c.RemoteIP())
 		h.auditService.SetMetric(dbMetric.Name)
 	}
 

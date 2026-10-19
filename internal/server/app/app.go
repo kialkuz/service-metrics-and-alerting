@@ -135,12 +135,12 @@ func getLogsPublisher(cfg *appConfig.Config, auditService *service.AuditService)
 		}
 		logsPublisher.Register(subscriberAuditFile)
 	}
-	if cfg.AuditUrl != "" {
-		subscriberAuditUrl, err := subscriber.NewAuditUrl(cfg.AuditUrl)
+	if cfg.AuditURL != "" {
+		subscriberAuditURL, err := subscriber.NewAuditURL(cfg.AuditURL)
 		if err != nil {
 			return nil, err
 		}
-		logsPublisher.Register(subscriberAuditUrl)
+		logsPublisher.Register(subscriberAuditURL)
 	}
 
 	return logsPublisher, nil

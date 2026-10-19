@@ -21,11 +21,11 @@ func (a *AuditService) SetMetric(name string) {
 	a.metricsList[name] = true
 }
 
-func (a *AuditService) SetIp(ip string) {
+func (a *AuditService) SetIP(ip string) {
 	a.ip = ip
 }
 
-func (a *AuditService) GetIp() string {
+func (a *AuditService) GetIP() string {
 	return a.ip
 }
 
