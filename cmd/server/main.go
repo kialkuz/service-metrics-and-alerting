@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "net/http/pprof"
+
 	"context"
 	"fmt"
 	appConfig "kialkuz/service-metrics-and-alerting/internal/config/server"

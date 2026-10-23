@@ -128,6 +128,8 @@ func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Met
 		}
 	}
 
+	clear(existMetrics)
+
 	var metricsForInsert []model.Metrics
 	if len(preparedForInsert) > 0 {
 		for _, metricsByType := range preparedForInsert {
@@ -135,6 +137,7 @@ func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Met
 				metricsForInsert = append(metricsForInsert, metric)
 			}
 		}
+		clear(preparedForInsert)
 	}
 
 	return s.metricsRepository.SaveList(ctx, metricsForInsert, metricsForUpdate)
