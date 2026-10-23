@@ -9,7 +9,6 @@ import (
 )
 
 type Config struct {
-	DBType          string
 	ServerHost      string
 	ServerPort      string
 	DB              db.Config
@@ -17,6 +16,8 @@ type Config struct {
 	FileStoragePath string
 	Restore         bool
 	Key             string
+	AuditFile       string
+	AuditURL        string
 }
 
 func NewConfig() (*Config, error) {
@@ -33,7 +34,6 @@ func NewConfig() (*Config, error) {
 	addressParts := strings.Split(config.Address, ":")
 
 	return &Config{
-		DBType:          config.DBType,
 		ServerHost:      addressParts[0],
 		ServerPort:      addressParts[1],
 		DB:              *postgresql.NewConfig(config.DatabaseDSN),
@@ -41,5 +41,7 @@ func NewConfig() (*Config, error) {
 		FileStoragePath: config.FileStoragePath,
 		Restore:         config.Restore,
 		Key:             config.Key,
+		AuditFile:       config.AuditFile,
+		AuditURL:        config.AuditURL,
 	}, nil
 }

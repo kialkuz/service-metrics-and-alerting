@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "net/http/pprof"
+
 	"context"
 	"fmt"
 	appConfig "kialkuz/service-metrics-and-alerting/internal/config/server"
@@ -36,6 +38,7 @@ func run() error {
 	}()
 
 	go appServer.FileService.SaveWithInterval(ctx)
+	go appServer.LogsPublisher.SaveWithInterval(ctx)
 
 	fmt.Println("Server running on port ", appConfigData.ServerPort)
 	newServer := serverInit.NewServer(appServer.Handler, appConfigData)

@@ -23,6 +23,11 @@ type MetricsFileService interface {
 	Save() error
 }
 
+type AuditService interface {
+	SetIP(ip string)
+	SetMetric(name string)
+}
+
 type Pinger interface {
 	Ping(ctx context.Context) error
 }
@@ -31,17 +36,20 @@ type MetricsHandler struct {
 	metricsService     pkgContracts.MetricsService
 	metricsFileService MetricsFileService
 	metricsDBService   Pinger
+	auditService       AuditService
 }
 
 func NewMetricsHandler(
 	metricsService pkgContracts.MetricsService,
 	metricsFileService MetricsFileService,
 	metricsDBService Pinger,
+	auditService AuditService,
 ) *MetricsHandler {
 	return &MetricsHandler{
 		metricsService:     metricsService,
 		metricsFileService: metricsFileService,
 		metricsDBService:   metricsDBService,
+		auditService:       auditService,
 	}
 }
 
@@ -161,6 +169,8 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 	}
 
 	h.metricsFileService.SetMetric(metrics.Name, *item)
+	h.auditService.SetIP(c.RemoteIP())
+	h.auditService.SetMetric(metrics.Name)
 
 	c.Status(http.StatusOK)
 }
@@ -224,6 +234,8 @@ func (h *MetricsHandler) UpdatesHandler(c *gin.Context) {
 
 	for _, dbMetric := range dbMetrics {
 		h.metricsFileService.SetMetric(dbMetric.Name, dbMetric)
+		h.auditService.SetIP(c.RemoteIP())
+		h.auditService.SetMetric(dbMetric.Name)
 	}
 
 	c.Status(http.StatusOK)
