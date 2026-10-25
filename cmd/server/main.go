@@ -1,5 +1,9 @@
 package main
 
+// @Title MetricsServer API
+// @Description Сервер сбора метрик.
+// @Version 1.0
+
 import (
 	_ "net/http/pprof"
 
@@ -9,6 +13,8 @@ import (
 	serverInit "kialkuz/service-metrics-and-alerting/internal/server"
 	"kialkuz/service-metrics-and-alerting/internal/server/app"
 	"log"
+
+	_ "kialkuz/service-metrics-and-alerting/swagger"
 )
 
 func main() {

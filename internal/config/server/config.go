@@ -9,7 +9,9 @@ import (
 )
 
 type Config struct {
-	ServerHost      string
+	// Адрес хоста сервера
+	ServerHost string
+	// Порт сервера
 	ServerPort      string
 	DB              db.Config
 	StoreInterval   int

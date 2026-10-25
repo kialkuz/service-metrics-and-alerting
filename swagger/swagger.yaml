@@ -1,0 +1,162 @@
+definitions:
+  dto.GetMetric:
+    properties:
+      id:
+        description: имя метрики
+        type: string
+      type:
+        description: параметр, принимающий значение gauge или counter
+        type: string
+    type: object
+  dto.Metrics:
+    properties:
+      delta:
+        description: значение метрики в случае передачи counter
+        type: integer
+      id:
+        description: имя метрики
+        type: string
+      type:
+        description: параметр, принимающий значение gauge или counter
+        type: string
+      value:
+        description: значение метрики в случае передачи gauge
+        type: number
+    type: object
+info:
+  contact: {}
+  description: Сервер сбора метрик.
+  title: MetricsServer API
+  version: "1.0"
+paths:
+  /:
+    get:
+      description: Запрос получения списка метрик
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+      summary: Запрос получения списка метрик
+  /ping:
+    get:
+      description: Запрос доступа бд
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+      summary: Ping db
+  /update/:
+    post:
+      description: Запрос изменения метрики
+      parameters:
+      - description: Тело запроса (id, type, delta/value)
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/dto.Metrics'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Запрос изменения метрики
+  /update/{type}/{name}/{value}:
+    post:
+      description: Запрос добавления метрики
+      parameters:
+      - default: gauge
+        description: Тип метрики
+        in: path
+        name: type
+        required: true
+        type: string
+      - default: HeapSys
+        description: Имя метрики
+        in: path
+        name: name
+        required: true
+        type: string
+      - default: 1000
+        description: Значение метрики
+        in: path
+        name: value
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Запрос добавления метрики
+  /updates/:
+    post:
+      description: Запрос изменения метрик
+      parameters:
+      - description: Тело запроса (id, type, delta/value)
+        in: body
+        name: req
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/dto.Metrics'
+          type: array
+      responses:
+        "0":
+          description: ""
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+      summary: Запрос изменения метрик
+  /value/:
+    post:
+      description: Запрос получения метрики
+      parameters:
+      - description: Тело запроса (id, type)
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetMetric'
+      responses:
+        "0":
+          description: ""
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Запрос получения метрики
+  /value/{type}/{name}:
+    get:
+      description: Запрос получения значения метрики
+      parameters:
+      - description: Тип метрики
+        enum:
+        - counter
+        - gauge
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: Имя метрики
+        example: PollCount
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "0":
+          description: ""
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+      summary: Запрос получения значения метрики
+swagger: "2.0"
