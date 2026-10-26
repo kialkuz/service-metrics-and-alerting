@@ -5,7 +5,6 @@ import (
 
 	"kialkuz/service-metrics-and-alerting/internal/config/db"
 	"kialkuz/service-metrics-and-alerting/internal/config/db/postgresql"
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
 )
 
 type Config struct {
@@ -23,11 +22,6 @@ type Config struct {
 }
 
 func NewConfig() (*Config, error) {
-	err := env.Load()
-	if err != nil {
-		return nil, err
-	}
-
 	config, err := GetIncomingParams()
 	if err != nil {
 		return nil, err
