@@ -19,10 +19,6 @@ func IsFileName(s string) bool {
 		return false
 	}
 
-	if strings.ContainsAny(s, `/\`) {
-		return false
-	}
-
 	if s == "." || s == ".." {
 		return false
 	}

@@ -15,15 +15,24 @@ import (
 	"log"
 
 	_ "kialkuz/service-metrics-and-alerting/swagger"
+
+	"go.uber.org/zap"
 )
 
 func main() {
-	if err := run(); err != nil {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
 		log.Fatal(err)
+	}
+	sugarlogger := logger.Sugar()
+	defer logger.Sync()
+
+	if err := run(sugarlogger); err != nil {
+		sugarlogger.Fatal(err)
 	}
 }
 
-func run() error {
+func run(sugarlogger *zap.SugaredLogger) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -32,9 +41,9 @@ func run() error {
 		return fmt.Errorf("error get configuration: %s", err.Error())
 	}
 
-	appServer, err := app.NewApp(ctx, appConfigData)
+	appServer, err := app.NewApp(ctx, sugarlogger, appConfigData)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	defer func() {
@@ -44,10 +53,13 @@ func run() error {
 	}()
 
 	go appServer.FileService.SaveWithInterval(ctx)
-	go appServer.LogsPublisher.SaveWithInterval(ctx)
 
-	fmt.Println("Server running on port ", appConfigData.ServerPort)
-	newServer := serverInit.NewServer(appServer.Handler, appConfigData)
+	sugarlogger.Infoln("Server running on port ", appConfigData.ServerPort)
+	newServer := serverInit.NewServer(
+		appServer.Handler,
+		appConfigData,
+		sugarlogger,
+	)
 	err = newServer.ListenAndServe()
 	if err != nil {
 		return fmt.Errorf("error starting server: %s", err.Error())

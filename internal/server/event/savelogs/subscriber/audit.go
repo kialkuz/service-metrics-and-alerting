@@ -1,15 +1,18 @@
 package subscriber
 
-import "kialkuz/service-metrics-and-alerting/internal/server/event/savelogs"
+import (
+	"context"
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs"
+)
 
 type AuditSaver interface {
-	Save(logsData savelogs.Event) error
+	Save(ctx context.Context, event savelogs.Event) error
 	GetAuditType() string
+	Close() error
 }
 
 type Audit struct {
 	AuditType string
-	SavePath  string
 }
 
 func (a Audit) GetAuditType() string {

@@ -1,10 +1,14 @@
-package postgresql
+package storage
 
 import (
 	"context"
-	"kialkuz/service-metrics-and-alerting/pkg/pgerrors"
+	"kialkuz/service-metrics-and-alerting/pkg/errorclassifier"
 	"time"
 )
+
+type RetryConfig struct {
+	Attempts int
+}
 
 var additionalReplaySendInterval = map[int]int{
 	1: 1,
@@ -15,7 +19,7 @@ var additionalReplaySendInterval = map[int]int{
 func WithRetry[T any](
 	ctx context.Context,
 	cfg RetryConfig,
-	classifier *pgerrors.PostgresErrorClassifier,
+	classifier errorclassifier.ErrorClassifier,
 	fn func(ctx context.Context) (T, error),
 ) (T, error) {
 	var zero T
@@ -24,7 +28,7 @@ func WithRetry[T any](
 
 	if err != nil {
 		classification := classifier.Classify(err)
-		if classification == pgerrors.Retriable {
+		if classification == errorclassifier.Retriable {
 			for i := 1; i <= cfg.Attempts; i++ {
 				timer := time.NewTimer(time.Duration(additionalReplaySendInterval[i]) * time.Second)
 

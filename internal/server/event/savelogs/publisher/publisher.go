@@ -2,30 +2,38 @@ package publisher
 
 import (
 	"context"
+	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs"
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber"
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
-	"log"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
+
+const maxThreads = 10
 
 type Publisher interface {
 	Register(subscriber.AuditSaver)
 	Deregister(subscriber.AuditSaver)
 	SaveWithInterval(ctx context.Context)
+	Save(ctx context.Context, log dto.MetricAudit)
 }
 
 type LogsPublisher struct {
-	observers    map[string]subscriber.AuditSaver
-	auditService *service.AuditService
+	observers     map[string]subscriber.AuditSaver
+	auditLogsList *service.AuditLogsList
+	logger        *zap.SugaredLogger
+	semaphore     *Semaphore
 }
 
-func NewLogsPublisher(auditService *service.AuditService) Publisher {
+func NewLogsPublisher(auditLogsList *service.AuditLogsList, logger *zap.SugaredLogger) Publisher {
 	return &LogsPublisher{
-		observers:    make(map[string]subscriber.AuditSaver),
-		auditService: auditService,
+		observers:     make(map[string]subscriber.AuditSaver),
+		auditLogsList: auditLogsList,
+		logger:        logger,
+		semaphore:     NewSemaphore(maxThreads),
 	}
 }
 
@@ -37,42 +45,63 @@ func (p *LogsPublisher) Register(o subscriber.AuditSaver) {
 }
 
 func (p *LogsPublisher) Deregister(o subscriber.AuditSaver) {
+	o.Close()
 	delete(p.observers, o.GetAuditType())
 }
 
+// Если событий будет очень много, то отправляем в clickhouse
+// clickhouse работает сразу с тысячами сообщений, поэтому накапливаем их в очереди лога
+// и потом сохраняем в бд. Для этого передосать saveLogs и дописать функцию для работы с бд.
 func (p *LogsPublisher) SaveWithInterval(ctx context.Context) {
-	ticker := time.NewTicker(time.Duration(5) * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
+	for {
 		select {
 		case <-ctx.Done():
+			for _, observer := range p.observers {
+				p.Deregister(observer)
+			}
 			return
-		default:
-			err := p.save(savelogs.Event{
-				TS:        time.Now().Unix(),
-				Metrics:   p.auditService.GetMetrics(),
-				IPAddress: p.auditService.GetIP(),
-			})
-			if err != nil {
-				log.Println("Error saving metrics logs:", err)
+		case <-ticker.C:
+			log := p.auditLogsList.Pop()
+			if log != nil {
+				err := p.saveLogs(ctx, savelogs.Event{
+					TS:        time.Now().Unix(),
+					Metrics:   log.ListName,
+					IPAddress: log.IP,
+				})
+				if err != nil {
+					p.logger.Error("Error saving metrics logs:", err)
+				}
 			}
 		}
 	}
 }
 
-func (p *LogsPublisher) save(event savelogs.Event) error {
-	g := new(errgroup.Group)
+// Пока используем запись логов на рантайме,
+func (p *LogsPublisher) Save(ctx context.Context, log dto.MetricAudit) {
+	err := p.saveLogs(ctx, savelogs.Event{
+		TS:        time.Now().Unix(),
+		Metrics:   log.ListName,
+		IPAddress: log.IP,
+	})
+	if err != nil {
+		p.logger.Error("Error saving metrics logs:", err)
+	}
+}
+
+func (p *LogsPublisher) saveLogs(ctx context.Context, event savelogs.Event) error {
+	p.semaphore.Acquire()
+	defer p.semaphore.Release()
+
+	g, ctx := errgroup.WithContext(ctx)
 
 	for _, observer := range p.observers {
 		g.Go(func() error {
-			return observer.Save(event)
+			return observer.Save(ctx, event)
 		})
 	}
 
-	if err := g.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+	return g.Wait()
 }

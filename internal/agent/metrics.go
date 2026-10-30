@@ -3,73 +3,47 @@ package agent
 import (
 	"context"
 	"errors"
-	"kialkuz/service-metrics-and-alerting/internal/dto"
-	"kialkuz/service-metrics-and-alerting/internal/model"
+	"kialkuz/service-metrics-and-alerting/internal/agent/collectalgo"
 	service "kialkuz/service-metrics-and-alerting/internal/service/agent"
-	"time"
-
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
-
-	"golang.org/x/sync/errgroup"
+	"time"
 )
 
 const defaultCountAdditionalReplaySendMetrics = 3
 
-var additionalReplaySendInterval = map[int]int{
-	1: 1,
-	2: 3,
-	3: 5,
-}
-
 type MetricsAgent struct {
 	metricsService service.MetricsAgentService
+	metricsConfig  MetricsConfig
 }
 
-func NewMetricsAgent(metricsService service.MetricsAgentService) *MetricsAgent {
+func NewMetricsAgent(
+	metricsService service.MetricsAgentService,
+	metricsConfig MetricsConfig,
+) *MetricsAgent {
 	return &MetricsAgent{
 		metricsService: metricsService,
+		metricsConfig:  metricsConfig,
 	}
 }
 
-func (a *MetricsAgent) CollectAndSend(reportInterval, pollInterval, rateLimit int) error {
-	var err error
-
+func (a *MetricsAgent) CollectAndSend(ctx context.Context) error {
 	now := time.Now()
 
-	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	ticker := time.NewTicker(time.Duration(a.metricsConfig.PollInterval) * time.Second)
 	defer ticker.Stop()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	g := new(errgroup.Group)
 
 	for {
 		select {
 		case <-ctx.Done():
-			return err
+			return pkgErrors.ErrAppStopped
 		case <-ticker.C:
-			if time.Now().After(now.Add(time.Duration(reportInterval) * time.Second)) {
-				metrics := make(chan dto.Metrics, rateLimit)
-
-				g.Go(func() error {
-					metrics, err = a.collect(metrics)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-
-				for w := 1; w <= rateLimit; w++ {
-					g.Go(func() error {
-						return a.send(metrics)
-					})
+			if time.Now().After(now.Add(time.Duration(a.metricsConfig.ReportInterval) * time.Second)) {
+				collectalgo, err := a.getCollectAlgo()
+				if err != nil {
+					return err
 				}
 
-				if err := g.Wait(); err != nil {
-					cancel()
-				}
+				collectalgo.CollectAndSend(ctx)
 
 				now = time.Now()
 			}
@@ -77,50 +51,29 @@ func (a *MetricsAgent) CollectAndSend(reportInterval, pollInterval, rateLimit in
 	}
 }
 
-func (a *MetricsAgent) collect(metrics chan dto.Metrics) (chan dto.Metrics, error) {
-	defer close(metrics)
+func (a *MetricsAgent) getCollectConfig() collectalgo.CollectConfig {
+	rateLimit := a.metricsConfig.RateLimit
 
-	for fieldName, fieldValue := range a.metricsService.CollectCounter() {
-		metrics <- dto.Metrics{
-			ID:    fieldName,
-			MType: model.Counter,
-			Delta: &fieldValue,
-		}
+	return collectalgo.CollectConfig{
+		CountAdditionalReplaySendMetrics: defaultCountAdditionalReplaySendMetrics,
+		AdditionalReplaySendInterval: map[int]int{
+			1: 1,
+			2: 3,
+			3: 5,
+		},
+		RateLimit: rateLimit,
 	}
-
-	gaugeMetrics, err := a.metricsService.CollectGauge()
-	if err != nil {
-		return nil, err
-	}
-	for fieldName, fieldValue := range gaugeMetrics {
-		metrics <- dto.Metrics{
-			ID:    fieldName,
-			MType: model.Gauge,
-			Value: &fieldValue,
-		}
-	}
-
-	return metrics, nil
 }
 
-func (a *MetricsAgent) send(metrics <-chan dto.Metrics) error {
-	for metric := range metrics {
-		_, err := a.metricsService.SendSingleMetric(metric)
-		if errors.Is(err, pkgErrors.ErrSendMetrics) {
-			for i := 1; i <= defaultCountAdditionalReplaySendMetrics; i++ {
-				timer := time.NewTimer(time.Duration(additionalReplaySendInterval[i]) * time.Second)
-				<-timer.C
+func (a *MetricsAgent) getCollectAlgo() (collectalgo.CollectAlgo, error) {
+	collectConfig := a.getCollectConfig()
 
-				if _, err = a.metricsService.SendSingleMetric(metric); err == nil {
-					break
-				}
-			}
-
-			if err != nil {
-				return err
-			}
-		}
+	switch a.metricsConfig.CollectAlgo {
+	case collectalgo.CollectSingle:
+		return collectalgo.NewSingle(a.metricsService, collectConfig), nil
+	case collectalgo.CollectAll:
+		return collectalgo.NewAll(a.metricsService, collectConfig), nil
+	default:
+		return nil, errors.New("unknown collect algo")
 	}
-
-	return nil
 }

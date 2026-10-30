@@ -17,6 +17,7 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
 
@@ -28,10 +29,10 @@ type App struct {
 	Pool          *pgxpool.Pool
 	FileService   *service.FileService
 	LogsPublisher publisher.Publisher
-	AuditService  *service.AuditService
+	AuditLogsList *service.AuditLogsList
 }
 
-func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
+func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Config) (*App, error) {
 	var (
 		storage service.MetricsRepository
 		pinger  *db.MemStorage
@@ -61,9 +62,9 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		storage = memory.NewMemoryStorage()
 	}
 
-	auditService := service.NewAuditService()
+	auditLogsList := service.NewAuditLogsList()
 
-	logsPublisher, err := getLogsPublisher(cfg, auditService)
+	logsPublisher, err := getLogsPublisher(cfg, auditLogsList, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error prepare logs publisher: %s", err.Error())
 	}
@@ -83,14 +84,14 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		metricsService,
 		fileService,
 		service.NewPingerService(pinger),
-		auditService,
+		logsPublisher,
 	)
 
 	return &App{
 		Handler:       handler,
 		Pool:          pool,
 		FileService:   fileService,
-		AuditService:  auditService,
+		AuditLogsList: auditLogsList,
 		LogsPublisher: logsPublisher,
 	}, nil
 }
@@ -125,8 +126,12 @@ func restoreMetrics(
 	return nil
 }
 
-func getLogsPublisher(cfg *appConfig.Config, auditService *service.AuditService) (publisher.Publisher, error) {
-	logsPublisher := publisher.NewLogsPublisher(auditService)
+func getLogsPublisher(
+	cfg *appConfig.Config,
+	auditLogsList *service.AuditLogsList,
+	logger *zap.SugaredLogger,
+) (publisher.Publisher, error) {
+	logsPublisher := publisher.NewLogsPublisher(auditLogsList, logger)
 
 	if cfg.AuditFile != "" {
 		subscriberAuditFile, err := subscriber.NewAuditFile(cfg.AuditFile)

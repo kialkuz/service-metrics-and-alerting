@@ -3,7 +3,8 @@ package postgresql
 import (
 	"context"
 
-	"kialkuz/service-metrics-and-alerting/pkg/pgerrors"
+	"kialkuz/service-metrics-and-alerting/internal/infrastructure/storage"
+	"kialkuz/service-metrics-and-alerting/pkg/errorclassifier"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,26 +12,22 @@ import (
 
 const retryAttempts = 3
 
-type RetryConfig struct {
-	Attempts int
-}
-
 type DB struct {
 	pool       *pgxpool.Pool
-	retry      RetryConfig
-	classifier *pgerrors.PostgresErrorClassifier
+	retry      storage.RetryConfig
+	classifier errorclassifier.ErrorClassifier
 }
 
 func NewDB(pool *pgxpool.Pool) *DB {
 	return &DB{
 		pool:       pool,
-		retry:      RetryConfig{Attempts: retryAttempts},
-		classifier: pgerrors.NewPostgresErrorClassifier(),
+		retry:      storage.RetryConfig{Attempts: retryAttempts},
+		classifier: errorclassifier.NewPostgresErrorClassifier(),
 	}
 }
 
 func (db *DB) Exec(ctx context.Context, sql string, args ...any) error {
-	_, err := WithRetry(ctx, db.retry, db.classifier, func(ctx context.Context) (struct{}, error) {
+	_, err := storage.WithRetry(ctx, db.retry, db.classifier, func(ctx context.Context) (struct{}, error) {
 		_, err := db.pool.Exec(ctx, sql, args...)
 		return struct{}{}, err
 	})
@@ -39,7 +36,7 @@ func (db *DB) Exec(ctx context.Context, sql string, args ...any) error {
 }
 
 func (db *DB) ExecTx(ctx context.Context, tx pgx.Tx, sql string, args ...any) error {
-	_, err := WithRetry(ctx, db.retry, db.classifier, func(ctx context.Context) (struct{}, error) {
+	_, err := storage.WithRetry(ctx, db.retry, db.classifier, func(ctx context.Context) (struct{}, error) {
 		_, err := tx.Exec(ctx, sql, args...)
 		return struct{}{}, err
 	})
@@ -53,7 +50,7 @@ func (db *DB) QueryRow(
 	sql string,
 	args ...any,
 ) error {
-	_, err := WithRetry(ctx, db.retry, db.classifier, func(ctx context.Context) (struct{}, error) {
+	_, err := storage.WithRetry(ctx, db.retry, db.classifier, func(ctx context.Context) (struct{}, error) {
 		row := db.pool.QueryRow(ctx, sql, args...)
 		return struct{}{}, scan(row)
 	})

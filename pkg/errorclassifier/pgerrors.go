@@ -1,4 +1,4 @@
-package pgerrors
+package errorclassifier
 
 import (
 	"errors"
@@ -7,34 +7,26 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// ErrorClassification тип для классификации ошибок
-type PGErrorClassification int
-
-const (
-	NonRetriable PGErrorClassification = iota
-	Retriable
-)
-
 type PostgresErrorClassifier struct{}
 
-func NewPostgresErrorClassifier() *PostgresErrorClassifier {
+func NewPostgresErrorClassifier() ErrorClassifier {
 	return &PostgresErrorClassifier{}
 }
 
-func (c *PostgresErrorClassifier) Classify(err error) PGErrorClassification {
+func (c PostgresErrorClassifier) Classify(err error) ErrorClassification {
 	if err == nil {
 		return NonRetriable
 	}
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
-		return СlassifyPgError(pgErr)
+		return c.classifyPgError(pgErr)
 	}
 
 	return NonRetriable
 }
 
-func СlassifyPgError(pgErr *pgconn.PgError) PGErrorClassification {
+func (c PostgresErrorClassifier) classifyPgError(pgErr *pgconn.PgError) ErrorClassification {
 	switch pgErr.Code {
 	// Класс 08 - Ошибки соединения
 	case pgerrcode.ConnectionException,

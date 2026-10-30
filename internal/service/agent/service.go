@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -24,9 +25,9 @@ import (
 type MetricsAgentService interface {
 	CollectCounter() map[string]int64
 	CollectGauge() (map[string]float64, error)
-	SendSingleMetric(value dto.Metrics) (*http.Response, error)
-	SendListMetrics(value []dto.Metrics) (*http.Response, error)
-	SendJSONBody(jsonData []byte, path string) (*http.Response, error)
+	SendSingleMetric(ctx context.Context, value dto.Metrics) (*http.Response, error)
+	SendListMetrics(ctx context.Context, value []dto.Metrics) (*http.Response, error)
+	SendJSONBody(ctx context.Context, jsonData []byte, path string) (*http.Response, error)
 	SendPostQuery(metricType, name, value string) (*http.Response, error)
 }
 
@@ -110,14 +111,14 @@ func (s *MetricsService) getSystemMetrics() (map[string]float64, error) {
 	return metrics, nil
 }
 
-func (s *MetricsService) SendSingleMetric(value dto.Metrics) (*http.Response, error) {
+func (s *MetricsService) SendSingleMetric(ctx context.Context, value dto.Metrics) (*http.Response, error) {
 	jsonData, err := json.Marshal(value)
 	if err != nil {
 		fmt.Println("Error marshalling JSON:", err)
 		return nil, err
 	}
 
-	response, err := s.SendJSONBody(jsonData, "/update/")
+	response, err := s.SendJSONBody(ctx, jsonData, "/update/")
 	if err != nil {
 		return nil, err
 	}
@@ -125,13 +126,13 @@ func (s *MetricsService) SendSingleMetric(value dto.Metrics) (*http.Response, er
 	return response, nil
 }
 
-func (s *MetricsService) SendListMetrics(value []dto.Metrics) (*http.Response, error) {
+func (s *MetricsService) SendListMetrics(ctx context.Context, value []dto.Metrics) (*http.Response, error) {
 	jsonData, err := json.Marshal(value)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling JSON: %s", err.Error())
 	}
 
-	response, err := s.SendJSONBody(jsonData, "/updates/")
+	response, err := s.SendJSONBody(ctx, jsonData, "/updates/")
 	if err != nil {
 		return nil, err
 	}
@@ -139,14 +140,14 @@ func (s *MetricsService) SendListMetrics(value []dto.Metrics) (*http.Response, e
 	return response, nil
 }
 
-func (s *MetricsService) SendJSONBody(jsonData []byte, path string) (*http.Response, error) {
+func (s *MetricsService) SendJSONBody(ctx context.Context, jsonData []byte, path string) (*http.Response, error) {
 	b, err := compress.MakeGzip(jsonData)
 	if err != nil {
 		return nil, err
 	}
 
 	client := &http.Client{}
-	request, err := http.NewRequest(http.MethodPost, s.url+path, bytes.NewReader(b))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, s.url+path, bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}
