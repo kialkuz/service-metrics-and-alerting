@@ -105,7 +105,10 @@ func ExampleMetricsHandler_UpdatesHandler() {
 }
 
 func ExampleMetricsHandler_GetMetricHandler() {
-	MetricsInit()
+	err := MetricsInit()
+	if err != nil {
+		panic(fmt.Errorf("error init metrics: %w", err))
+	}
 
 	metric := dto.GetMetric{
 		ID:    "TestCounter",
@@ -139,7 +142,10 @@ func ExampleMetricsHandler_GetMetricHandler() {
 }
 
 func ExampleMetricsHandler_GetMetricValueHandler() {
-	MetricsInit()
+	err := MetricsInit()
+	if err != nil {
+		panic(fmt.Errorf("error init metrics: %w", err))
+	}
 
 	ctx := context.Background()
 	req, err := http.NewRequestWithContext(

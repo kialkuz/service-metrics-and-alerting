@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/publisher"
 	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
 	"net/http"
@@ -23,11 +24,6 @@ type MetricsFileService interface {
 	Save() error
 }
 
-type AuditService interface {
-	SetIP(ip string)
-	SetMetric(name string)
-}
-
 type Pinger interface {
 	Ping(ctx context.Context) error
 }
@@ -36,20 +32,20 @@ type MetricsHandler struct {
 	metricsService     pkgContracts.MetricsService
 	metricsFileService MetricsFileService
 	metricsDBService   Pinger
-	auditService       AuditService
+	logsPublisher      publisher.Publisher
 }
 
 func NewMetricsHandler(
 	metricsService pkgContracts.MetricsService,
 	metricsFileService MetricsFileService,
 	metricsDBService Pinger,
-	auditService AuditService,
+	logsPublisher publisher.Publisher,
 ) *MetricsHandler {
 	return &MetricsHandler{
 		metricsService:     metricsService,
 		metricsFileService: metricsFileService,
 		metricsDBService:   metricsDBService,
-		auditService:       auditService,
+		logsPublisher:      logsPublisher,
 	}
 }
 
@@ -191,8 +187,11 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 	}
 
 	h.metricsFileService.SetMetric(metrics.Name, *item)
-	h.auditService.SetIP(c.RemoteIP())
-	h.auditService.SetMetric(metrics.Name)
+
+	h.logsPublisher.Save(ctx, dto.MetricAudit{
+		ListName: []string{metrics.Name},
+		IP:       c.RemoteIP(),
+	})
 
 	c.Status(http.StatusOK)
 }
@@ -263,11 +262,17 @@ func (h *MetricsHandler) UpdatesHandler(c *gin.Context) {
 		return
 	}
 
+	listName := make([]string, 0, len(dbMetrics))
 	for _, dbMetric := range dbMetrics {
 		h.metricsFileService.SetMetric(dbMetric.Name, dbMetric)
-		h.auditService.SetIP(c.RemoteIP())
-		h.auditService.SetMetric(dbMetric.Name)
+
+		listName = append(listName, dbMetric.Name)
 	}
+
+	h.logsPublisher.Save(ctx, dto.MetricAudit{
+		ListName: listName,
+		IP:       c.RemoteIP(),
+	})
 
 	c.Status(http.StatusOK)
 }
@@ -408,7 +413,7 @@ func (h *MetricsHandler) GetListHandler(c *gin.Context) {
 
 func (h *MetricsHandler) check(metricType, name string) (int, error) {
 	if !slices.Contains(model.MType, metricType) {
-		return http.StatusBadRequest, errors.New("incorrect metric type")
+		return http.StatusBadRequest, fmt.Errorf("incorrect metric type %s", metricType)
 	}
 
 	if name == "" {
