@@ -21,6 +21,11 @@ func WithComparing(c *gin.Context) {
 		c.Request.Body = unpackedBody
 	}
 
+	if strings.HasPrefix(c.Request.URL.Path, "/debug/pprof/") {
+		c.Next()
+		return
+	}
+
 	contentEncoding := c.Request.Header.Get("Accept-Encoding")
 	sendsGzip := strings.Contains(contentEncoding, "gzip")
 	if sendsGzip {
