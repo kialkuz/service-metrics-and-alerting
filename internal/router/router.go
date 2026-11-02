@@ -4,6 +4,7 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/config/server"
 	"kialkuz/service-metrics-and-alerting/internal/middleware"
 	"kialkuz/service-metrics-and-alerting/internal/server/handler"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -31,6 +32,10 @@ func Init(
 	router.GET("/ping", handler.PingDB)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	router.Any("/debug/pprof/*pprof", func(c *gin.Context) {
+		http.DefaultServeMux.ServeHTTP(c.Writer, c.Request)
+	})
 
 	return router
 }

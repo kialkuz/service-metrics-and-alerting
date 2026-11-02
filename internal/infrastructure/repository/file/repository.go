@@ -19,6 +19,10 @@ func GetFromFile(fileStoragePath string) ([]model.Metrics, error) {
 	if file != nil {
 		scanner := bufio.NewScanner(file)
 
+		if scanner.Err() != nil {
+			return nil, err
+		}
+
 		for scanner.Scan() {
 			var metrics model.Metrics
 
