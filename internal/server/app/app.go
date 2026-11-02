@@ -13,7 +13,11 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/server/handler"
 	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
 
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/publisher"
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber"
+
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
 
@@ -21,12 +25,14 @@ import (
 )
 
 type App struct {
-	Handler     *handler.MetricsHandler
-	Pool        *pgxpool.Pool
-	FileService *service.FileService
+	Handler       *handler.MetricsHandler
+	Pool          *pgxpool.Pool
+	FileService   *service.FileService
+	LogsPublisher publisher.Publisher
+	AuditLogsList *service.AuditLogsList
 }
 
-func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
+func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Config) (*App, error) {
 	var (
 		storage service.MetricsRepository
 		pinger  *db.MemStorage
@@ -56,6 +62,13 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		storage = memory.NewMemoryStorage()
 	}
 
+	auditLogsList := service.NewAuditLogsList()
+
+	logsPublisher, err := getLogsPublisher(cfg, auditLogsList, logger)
+	if err != nil {
+		return nil, fmt.Errorf("error prepare logs publisher: %s", err.Error())
+	}
+
 	metricsService := service.NewMetricsService(storage)
 
 	if cfg.Restore {
@@ -71,12 +84,15 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		metricsService,
 		fileService,
 		service.NewPingerService(pinger),
+		logsPublisher,
 	)
 
 	return &App{
-		Handler:     handler,
-		Pool:        pool,
-		FileService: fileService,
+		Handler:       handler,
+		Pool:          pool,
+		FileService:   fileService,
+		AuditLogsList: auditLogsList,
+		LogsPublisher: logsPublisher,
 	}, nil
 }
 
@@ -108,4 +124,29 @@ func restoreMetrics(
 	}
 
 	return nil
+}
+
+func getLogsPublisher(
+	cfg *appConfig.Config,
+	auditLogsList *service.AuditLogsList,
+	logger *zap.SugaredLogger,
+) (publisher.Publisher, error) {
+	logsPublisher := publisher.NewLogsPublisher(auditLogsList, logger)
+
+	if cfg.AuditFile != "" {
+		subscriberAuditFile, err := subscriber.NewAuditFile(cfg.AuditFile)
+		if err != nil {
+			return nil, err
+		}
+		logsPublisher.Register(subscriberAuditFile)
+	}
+	if cfg.AuditURL != "" {
+		subscriberAuditURL, err := subscriber.NewAuditURL(cfg.AuditURL)
+		if err != nil {
+			return nil, err
+		}
+		logsPublisher.Register(subscriberAuditURL)
+	}
+
+	return logsPublisher, nil
 }
