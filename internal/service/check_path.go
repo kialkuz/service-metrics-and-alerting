@@ -2,7 +2,6 @@ package service
 
 import (
 	"net/url"
-	"path/filepath"
 	"strings"
 	"unicode"
 )
@@ -33,5 +32,5 @@ func IsFileName(s string) bool {
 		}
 	}
 
-	return filepath.Base(s) == s
+	return true
 }

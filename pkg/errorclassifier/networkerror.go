@@ -3,6 +3,7 @@ package errorclassifier
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 )
@@ -11,6 +12,14 @@ type HTTPError struct {
 	error
 	StatusCode int
 	Status     string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf(
+		"HTTP request failed: %d %s",
+		e.StatusCode,
+		e.Status,
+	)
 }
 
 type NetworkErrorClassifier struct{}

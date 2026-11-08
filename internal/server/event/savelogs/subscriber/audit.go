@@ -6,9 +6,9 @@ import (
 )
 
 type AuditSaver interface {
-	Save(ctx context.Context, event savelogs.Event) error
 	GetAuditType() string
 	Close() error
+	Save(ctx context.Context, event savelogs.Event) error
 }
 
 type Audit struct {

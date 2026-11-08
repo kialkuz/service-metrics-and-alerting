@@ -27,7 +27,6 @@ type MetricsAgentService interface {
 	CollectGauge() (map[string]float64, error)
 	SendSingleMetric(ctx context.Context, value dto.Metrics) (*http.Response, error)
 	SendListMetrics(ctx context.Context, value []dto.Metrics) (*http.Response, error)
-	SendJSONBody(ctx context.Context, jsonData []byte, path string) (*http.Response, error)
 	SendPostQuery(metricType, name, value string) (*http.Response, error)
 }
 
@@ -118,7 +117,7 @@ func (s *MetricsService) SendSingleMetric(ctx context.Context, value dto.Metrics
 		return nil, err
 	}
 
-	response, err := s.SendJSONBody(ctx, jsonData, "/update/")
+	response, err := s.sendJSONBody(ctx, jsonData, "/update/")
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +131,7 @@ func (s *MetricsService) SendListMetrics(ctx context.Context, value []dto.Metric
 		return nil, fmt.Errorf("error marshalling JSON: %s", err.Error())
 	}
 
-	response, err := s.SendJSONBody(ctx, jsonData, "/updates/")
+	response, err := s.sendJSONBody(ctx, jsonData, "/updates/")
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +139,7 @@ func (s *MetricsService) SendListMetrics(ctx context.Context, value []dto.Metric
 	return response, nil
 }
 
-func (s *MetricsService) SendJSONBody(ctx context.Context, jsonData []byte, path string) (*http.Response, error) {
+func (s *MetricsService) sendJSONBody(ctx context.Context, jsonData []byte, path string) (*http.Response, error) {
 	b, err := compress.MakeGzip(jsonData)
 	if err != nil {
 		return nil, err

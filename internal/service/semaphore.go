@@ -1,4 +1,4 @@
-package publisher
+package service
 
 type Semaphore struct {
 	semaCh chan struct{}

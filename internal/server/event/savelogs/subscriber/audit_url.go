@@ -22,7 +22,7 @@ type AuditURL struct {
 	savePath   string
 }
 
-func NewAuditURL(savePath string) (*AuditURL, error) {
+func NewAuditURL(savePath string) (AuditSaver, error) {
 	if !service.IsURL(savePath) {
 		return nil, pkgErrors.ErrNotURL
 	}
@@ -48,20 +48,28 @@ func (a AuditURL) Save(ctx context.Context, event savelogs.Event) error {
 
 func (a AuditURL) sendJSONBody(ctx context.Context, jsonData []byte) error {
 	client := &http.Client{}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, a.savePath, bytes.NewReader(jsonData))
-	if err != nil {
-		return err
-	}
 
-	request.Header.Set("Content-Type", "application/json")
+	_, err := storage.WithRetry(ctx, a.retry, a.classifier, func(ctx context.Context) (struct{}, error) {
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost, a.savePath, bytes.NewReader(jsonData))
+		if err != nil {
+			return struct{}{}, err
+		}
 
-	_, err = storage.WithRetry(ctx, a.retry, a.classifier, func(ctx context.Context) (struct{}, error) {
+		request.Header.Set("Content-Type", "application/json")
+
 		response, err := client.Do(request)
 		if err != nil {
 			return struct{}{}, err
 		}
 		defer response.Body.Close()
-		return struct{}{}, err
+
+		if response.StatusCode < 200 || response.StatusCode >= 300 {
+			return struct{}{}, &errorclassifier.HTTPError{
+				StatusCode: response.StatusCode,
+			}
+		}
+
+		return struct{}{}, nil
 	})
 
 	return err

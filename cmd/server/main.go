@@ -51,9 +51,14 @@ func run(sugarlogger *zap.SugaredLogger) error {
 		if appServer.Pool != nil {
 			appServer.Pool.Close()
 		}
+
+		if appServer.LogsPublisher != nil {
+			appServer.LogsPublisher.Shutdown()
+		}
 	}()
 
 	go appServer.FileService.SaveWithInterval(ctx)
+	go appServer.LogsPublisher.Save(ctx)
 
 	newServer := serverInit.NewServer(
 		appServer.Handler,

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
-	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/publisher"
+	"kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
 	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
 	"net/http"
@@ -32,20 +32,20 @@ type MetricsHandler struct {
 	metricsService     pkgContracts.MetricsService
 	metricsFileService MetricsFileService
 	metricsDBService   Pinger
-	logsPublisher      publisher.Publisher
+	auditLogs          auditlogs.AuditLogs
 }
 
 func NewMetricsHandler(
 	metricsService pkgContracts.MetricsService,
 	metricsFileService MetricsFileService,
 	metricsDBService Pinger,
-	logsPublisher publisher.Publisher,
+	auditLogs auditlogs.AuditLogs,
 ) *MetricsHandler {
 	return &MetricsHandler{
 		metricsService:     metricsService,
 		metricsFileService: metricsFileService,
 		metricsDBService:   metricsDBService,
-		logsPublisher:      logsPublisher,
+		auditLogs:          auditLogs,
 	}
 }
 
@@ -188,7 +188,7 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 
 	h.metricsFileService.SetMetric(metrics.Name, *item)
 
-	h.logsPublisher.Save(ctx, dto.MetricAudit{
+	h.auditLogs.Add(dto.MetricAudit{
 		ListName: []string{metrics.Name},
 		IP:       c.RemoteIP(),
 	})
@@ -269,7 +269,7 @@ func (h *MetricsHandler) UpdatesHandler(c *gin.Context) {
 		listName = append(listName, dbMetric.Name)
 	}
 
-	h.logsPublisher.Save(ctx, dto.MetricAudit{
+	h.auditLogs.Add(dto.MetricAudit{
 		ListName: listName,
 		IP:       c.RemoteIP(),
 	})

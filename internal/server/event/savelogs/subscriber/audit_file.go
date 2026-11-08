@@ -17,7 +17,7 @@ type AuditFile struct {
 	fileDesc *os.File
 }
 
-func NewAuditFile(savePath string) (*AuditFile, error) {
+func NewAuditFile(savePath string) (AuditSaver, error) {
 	if !service.IsFileName(savePath) {
 		return nil, pkgErrors.ErrNotFIleName
 	}
@@ -35,7 +35,7 @@ func NewAuditFile(savePath string) (*AuditFile, error) {
 func (a *AuditFile) Save(ctx context.Context, event savelogs.Event) error {
 	jsonData, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("ошибка сериализации JSON: %w", err)
+		return fmt.Errorf("ошибка сериализации JSON: %w, ip: %s", err, event.IPAddress)
 	}
 	jsonData = append(jsonData, '\n')
 
@@ -43,7 +43,12 @@ func (a *AuditFile) Save(ctx context.Context, event savelogs.Event) error {
 	defer a.m.Unlock()
 
 	_, err = a.fileDesc.Write(jsonData)
-	return err
+
+	if err != nil {
+		return fmt.Errorf("записи в файл логов аудита: %w, ip: %s", err, event.IPAddress)
+	}
+
+	return nil
 }
 
 func (a *AuditFile) Close() error {
