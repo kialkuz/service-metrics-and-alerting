@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
+	"kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
 	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
 	"net/http"
@@ -18,9 +19,8 @@ import (
 
 const timeout = 10
 
-type MetricsFileService interface {
+type LogsSaver interface {
 	SetMetric(name string, metric model.Metrics)
-	Save() error
 }
 
 type Pinger interface {
@@ -28,23 +28,32 @@ type Pinger interface {
 }
 
 type MetricsHandler struct {
-	metricsService     pkgContracts.MetricsService
-	metricsFileService MetricsFileService
-	metricsDBService   Pinger
+	metricsService   pkgContracts.MetricsService
+	logsSaverService LogsSaver
+	metricsDBService Pinger
+	auditLogs        auditlogs.AuditLogs
 }
 
 func NewMetricsHandler(
 	metricsService pkgContracts.MetricsService,
-	metricsFileService MetricsFileService,
+	logsSaverService LogsSaver,
 	metricsDBService Pinger,
+	auditLogs auditlogs.AuditLogs,
 ) *MetricsHandler {
 	return &MetricsHandler{
-		metricsService:     metricsService,
-		metricsFileService: metricsFileService,
-		metricsDBService:   metricsDBService,
+		metricsService:   metricsService,
+		logsSaverService: logsSaverService,
+		metricsDBService: metricsDBService,
+		auditLogs:        auditLogs,
 	}
 }
 
+// PingDB godoc
+// @Summary Ping db
+// @Description Запрос доступа бд
+// @Success 200
+// @Failure 500
+// @Router /ping [get]
 func (h *MetricsHandler) PingDB(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 1*time.Second)
 	defer cancel()
@@ -62,6 +71,15 @@ func (h *MetricsHandler) PingDB(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
+// AddHandler godoc
+// @Summary Запрос добавления метрики
+// @Description Запрос добавления метрики
+// @Param type path string true "Тип метрики" default(gauge)
+// @Param name path string true "Имя метрики" default(HeapSys)
+// @Param value path number true "Значение метрики" default(1000)
+// @Success 200
+// @Failure 400
+// @Router /update/{type}/{name}/{value} [post]
 func (h *MetricsHandler) AddHandler(c *gin.Context) {
 	metricType := c.Param("type")
 	name := c.Param("name")
@@ -110,6 +128,13 @@ func (h *MetricsHandler) AddHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// UpdateHandler godoc
+// @Summary Запрос изменения метрики
+// @Description Запрос изменения метрики
+// @Param req body dto.Metrics true "Тело запроса (id, type, delta/value)"
+// @Success 200
+// @Failure 400
+// @Router /update/ [post]
 func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -160,11 +185,25 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 		return
 	}
 
-	h.metricsFileService.SetMetric(metrics.Name, *item)
+	h.logsSaverService.SetMetric(metrics.Name, *item)
+
+	h.auditLogs.Add(dto.AuditLog{
+		ListName: []string{metrics.Name},
+		IP:       c.RemoteIP(),
+	})
 
 	c.Status(http.StatusOK)
 }
 
+// UpdatesHandler godoc
+// @Summary Запрос изменения метрик
+// @Description Запрос изменения метрик
+// @Param req body []dto.Metrics true "Тело запроса (id, type, delta/value)"
+// @Success 200
+// @Failure 400
+// @Failure 404
+// @Failure 0
+// @Router /updates/ [post]
 func (h *MetricsHandler) UpdatesHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -222,9 +261,17 @@ func (h *MetricsHandler) UpdatesHandler(c *gin.Context) {
 		return
 	}
 
+	listName := make([]string, 0, len(dbMetrics))
 	for _, dbMetric := range dbMetrics {
-		h.metricsFileService.SetMetric(dbMetric.Name, dbMetric)
+		h.logsSaverService.SetMetric(dbMetric.Name, dbMetric)
+
+		listName = append(listName, dbMetric.Name)
 	}
+
+	h.auditLogs.Add(dto.AuditLog{
+		ListName: listName,
+		IP:       c.RemoteIP(),
+	})
 
 	c.Status(http.StatusOK)
 }
@@ -246,8 +293,17 @@ func (h *MetricsHandler) validateUpdateRequest(metrics dto.Metrics) (httpCode in
 	return 0, nil
 }
 
+// GetMetricHandler godoc
+// @Summary Запрос получения метрики
+// @Description Запрос получения метрики
+// @Param req body dto.GetMetric true "Тело запроса (id, type)"
+// @Success 200
+// @Failure 404
+// @Failure 500
+// @Failure 0
+// @Router /value/ [post]
 func (h *MetricsHandler) GetMetricHandler(c *gin.Context) {
-	var request dto.Metrics
+	var request dto.GetMetric
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный JSON"})
@@ -287,6 +343,15 @@ func (h *MetricsHandler) GetMetricHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDto)
 }
 
+// GetMetricValueHandler godoc
+// @Summary Запрос получения значения метрики
+// @Description Запрос получения значения метрики
+// @Param type path string true "Тип метрики" Enums(counter, gauge)
+// @Param name path string true "Имя метрики" example(PollCount)
+// @Success 200
+// @Failure 404
+// @Failure 0
+// @Router /value/{type}/{name} [get]
 func (h *MetricsHandler) GetMetricValueHandler(c *gin.Context) {
 	metricType := c.Param("type")
 	name := c.Param("name")
@@ -312,6 +377,12 @@ func (h *MetricsHandler) GetMetricValueHandler(c *gin.Context) {
 	}
 }
 
+// GetListHandler godoc
+// @Summary Запрос получения списка метрик
+// @Description Запрос получения списка метрик
+// @Success 200
+// @Failure 404
+// @Router / [get]
 func (h *MetricsHandler) GetListHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
 	defer cancel()
@@ -341,7 +412,7 @@ func (h *MetricsHandler) GetListHandler(c *gin.Context) {
 
 func (h *MetricsHandler) check(metricType, name string) (int, error) {
 	if !slices.Contains(model.MType, metricType) {
-		return http.StatusBadRequest, errors.New("incorrect metric type")
+		return http.StatusBadRequest, fmt.Errorf("incorrect metric type %s", metricType)
 	}
 
 	if name == "" {
