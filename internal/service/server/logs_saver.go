@@ -17,27 +17,27 @@ type MetricsFileRepository interface {
 var metricsList map[string]model.Metrics
 var now time.Time
 
-type FileService struct {
+type LogsSaverService struct {
 	mrw           sync.RWMutex
 	repository    MetricsFileRepository
 	storeInterval int
 }
 
-func NewFileService(repository MetricsFileRepository, storeInterval int) *FileService {
+func NewLogsSaverService(repository MetricsFileRepository, storeInterval int) *LogsSaverService {
 	now = time.Now()
 	metricsList = make(map[string]model.Metrics)
 
-	return &FileService{repository: repository, storeInterval: storeInterval}
+	return &LogsSaverService{repository: repository, storeInterval: storeInterval}
 }
 
-func (p *FileService) SetMetric(name string, metric model.Metrics) {
+func (p *LogsSaverService) SetMetric(name string, metric model.Metrics) {
 	p.mrw.Lock()
 	defer p.mrw.Unlock()
 
 	metricsList[name] = metric
 }
 
-func (p *FileService) SaveWithInterval(ctx context.Context) {
+func (p *LogsSaverService) SaveWithInterval(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(p.storeInterval) * time.Second)
 	defer ticker.Stop()
 
@@ -46,7 +46,7 @@ func (p *FileService) SaveWithInterval(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			err := p.Save()
+			err := p.save()
 			if err != nil {
 				log.Println("Error saving metrics:", err)
 			}
@@ -54,7 +54,7 @@ func (p *FileService) SaveWithInterval(ctx context.Context) {
 	}
 }
 
-func (p *FileService) Save() error {
+func (p *LogsSaverService) save() error {
 	p.mrw.RLock()
 	defer p.mrw.RUnlock()
 

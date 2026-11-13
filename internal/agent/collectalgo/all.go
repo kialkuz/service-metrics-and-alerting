@@ -3,9 +3,9 @@ package collectalgo
 import (
 	"context"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/storage"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	service "kialkuz/service-metrics-and-alerting/internal/service/agent"
+	"kialkuz/service-metrics-and-alerting/internal/service/retrier"
 	"kialkuz/service-metrics-and-alerting/pkg/errorclassifier"
 )
 
@@ -17,6 +17,7 @@ const (
 type All struct {
 	metricsService service.MetricsAgentService
 	collectConfig  CollectConfig
+	retrier        retrier.Retrier
 }
 
 func NewAll(
@@ -26,6 +27,10 @@ func NewAll(
 	return All{
 		metricsService: metricsService,
 		collectConfig:  collectConfig,
+		retrier: retrier.NewRetrierService(
+			retrier.RetryConfig{Attempts: retryAttempts},
+			errorclassifier.NewNetworkErrorClassifier(),
+		),
 	}
 }
 
@@ -73,18 +78,10 @@ func (a All) collect() ([]dto.Metrics, error) {
 }
 
 func (a All) send(ctx context.Context, metrics []dto.Metrics) error {
-	_, err := storage.WithRetry(
+	return a.retrier.WithRetry(
 		ctx,
-		storage.RetryConfig{Attempts: retryAttempts},
-		errorclassifier.NewNetworkErrorClassifier(),
-		func(ctx context.Context) (struct{}, error) {
-			_, err := a.metricsService.SendListMetrics(ctx, metrics)
-			return struct{}{}, err
+		func(ctx context.Context) error {
+			return a.metricsService.SendListMetrics(ctx, metrics)
 		},
 	)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

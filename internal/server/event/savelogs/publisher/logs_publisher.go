@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs"
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber"
 )
 
@@ -34,4 +35,23 @@ func (p *LogsPublisher) Deregister(o subscriber.AuditSaver) {
 
 func (p *LogsPublisher) GetObservers() map[string]subscriber.AuditSaver {
 	return p.observers
+}
+
+func (p *LogsPublisher) GetObserver(auditType string) subscriber.AuditSaver {
+	observer, ok := p.observers[auditType]
+	if ok {
+		return observer
+	}
+
+	return nil
+}
+
+func (p *LogsPublisher) GetChans(maxThreads int) map[string]chan savelogs.Event {
+	chans := make(map[string]chan savelogs.Event, len(p.observers))
+
+	for name := range p.observers {
+		chans[name] = make(chan savelogs.Event, maxThreads)
+	}
+
+	return chans
 }

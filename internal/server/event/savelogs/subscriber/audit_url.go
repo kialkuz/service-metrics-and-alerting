@@ -5,21 +5,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/storage"
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs"
 	"kialkuz/service-metrics-and-alerting/internal/service"
+	"kialkuz/service-metrics-and-alerting/internal/service/request"
+	"kialkuz/service-metrics-and-alerting/internal/service/retrier"
 	"kialkuz/service-metrics-and-alerting/pkg/errorclassifier"
 	pkgErrors "kialkuz/service-metrics-and-alerting/pkg/errors"
 	"net/http"
 )
 
-const retryAttempts = 3
+const (
+	AuditTypeURL  = "url"
+	retryAttempts = 3
+)
 
 type AuditURL struct {
 	Audit
-	retry      storage.RetryConfig
-	classifier errorclassifier.ErrorClassifier
-	savePath   string
+	savePath string
+	retrier  retrier.Retrier
 }
 
 func NewAuditURL(savePath string) (AuditSaver, error) {
@@ -27,52 +30,45 @@ func NewAuditURL(savePath string) (AuditSaver, error) {
 		return nil, pkgErrors.ErrNotURL
 	}
 
-	audit := Audit{AuditType: savelogs.AuditURL}
-
 	return &AuditURL{
-		Audit:      audit,
-		retry:      storage.RetryConfig{Attempts: retryAttempts},
-		classifier: errorclassifier.NewNetworkErrorClassifier(),
-		savePath:   savePath,
+		Audit:    Audit{AuditType: AuditTypeURL},
+		savePath: savePath,
+		retrier: retrier.NewRetrierService(
+			retrier.RetryConfig{Attempts: retryAttempts},
+			errorclassifier.NewNetworkErrorClassifier(),
+		),
 	}, nil
 }
 
-func (a AuditURL) Save(ctx context.Context, event savelogs.Event) error {
-	jsonData, err := json.MarshalIndent(event, "", " ")
-	if err != nil {
-		return fmt.Errorf("ошибка сериализации JSON: %w", err)
-	}
+func (a AuditURL) Save(ctx context.Context, events <-chan savelogs.Event) {
+	for event := range events {
+		jsonData, err := json.MarshalIndent(event, "", " ")
+		if err != nil {
+			a.logger.Error(fmt.Errorf("ошибка сериализации JSON: %w", err))
+			return
+		}
 
-	return a.sendJSONBody(ctx, jsonData)
+		err = a.sendJSONBody(ctx, jsonData)
+		if err != nil {
+			a.logger.Error(err)
+			return
+		}
+	}
 }
 
 func (a AuditURL) sendJSONBody(ctx context.Context, jsonData []byte) error {
 	client := &http.Client{}
 
-	_, err := storage.WithRetry(ctx, a.retry, a.classifier, func(ctx context.Context) (struct{}, error) {
-		request, err := http.NewRequestWithContext(ctx, http.MethodPost, a.savePath, bytes.NewReader(jsonData))
+	return a.retrier.WithRetry(ctx, func(ctx context.Context) error {
+		requestData, err := http.NewRequestWithContext(ctx, http.MethodPost, a.savePath, bytes.NewReader(jsonData))
 		if err != nil {
-			return struct{}{}, err
+			return err
 		}
 
-		request.Header.Set("Content-Type", "application/json")
+		requestData.Header.Set("Content-Type", "application/json")
 
-		response, err := client.Do(request)
-		if err != nil {
-			return struct{}{}, err
-		}
-		defer response.Body.Close()
-
-		if response.StatusCode < 200 || response.StatusCode >= 300 {
-			return struct{}{}, &errorclassifier.HTTPError{
-				StatusCode: response.StatusCode,
-			}
-		}
-
-		return struct{}{}, nil
+		return request.Send(client, requestData)
 	})
-
-	return err
 }
 
 func (a AuditURL) Close() error {

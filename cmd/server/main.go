@@ -6,6 +6,9 @@ package main
 
 import (
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"context"
 	"fmt"
@@ -34,8 +37,12 @@ func main() {
 }
 
 func run(sugarlogger *zap.SugaredLogger) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+	defer stop()
 
 	appConfigData, err := appConfig.NewConfig()
 	if err != nil {
@@ -57,7 +64,7 @@ func run(sugarlogger *zap.SugaredLogger) error {
 		}
 	}()
 
-	go appServer.FileService.SaveWithInterval(ctx)
+	go appServer.LogsSaver.SaveWithInterval(ctx)
 	go appServer.LogsPublisher.Save(ctx)
 
 	newServer := serverInit.NewServer(
@@ -65,5 +72,6 @@ func run(sugarlogger *zap.SugaredLogger) error {
 		appConfigData,
 		sugarlogger,
 	)
-	return startServer.StartWithGracefulShutdown(newServer, appConfigData.ServerPort)
+
+	return startServer.StartWithGracefulShutdown(ctx, newServer, appConfigData.ServerPort)
 }

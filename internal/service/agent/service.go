@@ -10,6 +10,7 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"kialkuz/service-metrics-and-alerting/internal/service/compress"
+	"kialkuz/service-metrics-and-alerting/internal/service/request"
 	signService "kialkuz/service-metrics-and-alerting/internal/service/sign"
 	"log"
 	"maps"
@@ -25,9 +26,8 @@ import (
 type MetricsAgentService interface {
 	CollectCounter() map[string]int64
 	CollectGauge() (map[string]float64, error)
-	SendSingleMetric(ctx context.Context, value dto.Metrics) (*http.Response, error)
-	SendListMetrics(ctx context.Context, value []dto.Metrics) (*http.Response, error)
-	SendPostQuery(metricType, name, value string) (*http.Response, error)
+	SendSingleMetric(ctx context.Context, value dto.Metrics) error
+	SendListMetrics(ctx context.Context, value []dto.Metrics) error
 }
 
 //go:generate go run go.uber.org/mock/mockgen -source=service.go -destination=mocks/service_mock.go -package=mocks -typed
@@ -110,71 +110,52 @@ func (s *MetricsService) getSystemMetrics() (map[string]float64, error) {
 	return metrics, nil
 }
 
-func (s *MetricsService) SendSingleMetric(ctx context.Context, value dto.Metrics) (*http.Response, error) {
+func (s *MetricsService) SendSingleMetric(ctx context.Context, value dto.Metrics) error {
 	jsonData, err := json.Marshal(value)
 	if err != nil {
 		fmt.Println("Error marshalling JSON:", err)
-		return nil, err
+		return err
 	}
 
-	response, err := s.sendJSONBody(ctx, jsonData, "/update/")
+	err = s.sendJSONBody(ctx, jsonData, "/update/")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return response, nil
+	return nil
 }
 
-func (s *MetricsService) SendListMetrics(ctx context.Context, value []dto.Metrics) (*http.Response, error) {
+func (s *MetricsService) SendListMetrics(ctx context.Context, value []dto.Metrics) error {
 	jsonData, err := json.Marshal(value)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling JSON: %s", err.Error())
+		return fmt.Errorf("error marshalling JSON: %s", err.Error())
 	}
 
-	response, err := s.sendJSONBody(ctx, jsonData, "/updates/")
+	err = s.sendJSONBody(ctx, jsonData, "/updates/")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return response, nil
+	return nil
 }
 
-func (s *MetricsService) sendJSONBody(ctx context.Context, jsonData []byte, path string) (*http.Response, error) {
+func (s *MetricsService) sendJSONBody(ctx context.Context, jsonData []byte, path string) error {
 	b, err := compress.MakeGzip(jsonData)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	client := &http.Client{}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, s.url+path, bytes.NewReader(b))
+	requestData, err := http.NewRequestWithContext(ctx, http.MethodPost, s.url+path, bytes.NewReader(b))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Add("Content-Encoding", "gzip")
+	requestData.Header.Set("Content-Type", "application/json")
+	requestData.Header.Add("Content-Encoding", "gzip")
 	if s.key != "" {
-		request.Header.Add("HashSHA256", hex.EncodeToString(signService.Generate(jsonData, s.key)))
+		requestData.Header.Add("HashSHA256", hex.EncodeToString(signService.Generate(jsonData, s.key)))
 	}
 
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	defer response.Body.Close()
-
-	return response, nil
-}
-
-func (s *MetricsService) SendPostQuery(metricType, name, value string) (*http.Response, error) {
-	query := fmt.Sprintf("/update/%s/%s/%s", metricType, name, value)
-	response, err := http.Post(s.url+query, "text/plain", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	defer response.Body.Close()
-
-	return response, nil
+	return request.Send(client, requestData)
 }

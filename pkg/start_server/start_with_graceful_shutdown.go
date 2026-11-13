@@ -7,10 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
-func StartWithGracefulShutdown(srv *http.Server, serverPort string) error {
+func StartWithGracefulShutdown(ctx context.Context, srv *http.Server, serverPort string) error {
 	serverError := make(chan error, 1)
 
 	go func() error {
@@ -28,10 +27,8 @@ func StartWithGracefulShutdown(srv *http.Server, serverPort string) error {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-stop:
+	case <-ctx.Done():
 		fmt.Println("Shutting down server...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {
 			return fmt.Errorf("server forced to shutdown: %w", err)

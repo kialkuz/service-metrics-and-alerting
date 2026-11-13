@@ -99,7 +99,6 @@ func ExampleMetricsHandler_UpdatesHandler() {
 	}
 	defer resp.Body.Close()
 
-	// fmt.Println(string(body))
 	fmt.Printf("Статус ответа: %d\n", resp.StatusCode)
 	// Output: Статус ответа: 200
 }

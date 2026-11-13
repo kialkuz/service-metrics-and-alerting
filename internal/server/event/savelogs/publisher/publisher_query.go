@@ -5,11 +5,16 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs"
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber"
 	"kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
+	"maps"
+	"slices"
 	"time"
 
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
+
+const maxHandlers = 3
+
+var events map[string]chan savelogs.Event
 
 type Publisher interface {
 	Register(subscriber.AuditSaver)
@@ -34,11 +39,11 @@ func NewLogsPublisherQuery(auditLogs auditlogs.AuditLogs, logger *zap.SugaredLog
 }
 
 func (p *LogsPublisherQuery) Register(o subscriber.AuditSaver) {
+	o.SetLogger(p.logger)
 	p.LogsPublisher.Register(o)
 }
 
 func (p *LogsPublisherQuery) Save(ctx context.Context) {
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -47,27 +52,34 @@ func (p *LogsPublisherQuery) Save(ctx context.Context) {
 			}
 			return
 		default:
-			log := p.auditLogs.Pop()
-			err := p.saveLogs(ctx, savelogs.Event{
-				TS:        time.Now().Unix(),
-				Metrics:   log.ListName,
-				IPAddress: log.IP,
-			})
-			if err != nil {
-				p.logger.Error("Error saving metrics logs:", err)
+			events = p.GetChans(maxHandlers)
+
+			for w := 1; w <= maxHandlers; w++ {
+				for name, observer := range p.GetObservers() {
+					go observer.Save(ctx, events[name])
+				}
 			}
+
+			p.sendToSubscriber(ctx)
 		}
 	}
 }
 
-func (p *LogsPublisherQuery) saveLogs(ctx context.Context, event savelogs.Event) error {
-	g, ctx := errgroup.WithContext(ctx)
+func (p *LogsPublisherQuery) sendToSubscriber(ctx context.Context) {
+	queryList := slices.Collect(maps.Keys(p.GetObservers()))
 
-	for _, observer := range p.GetObservers() {
-		g.Go(func() error {
-			return observer.Save(ctx, event)
-		})
+	for {
+		for _, queryType := range queryList {
+			log, ok := p.auditLogs.Pop(ctx, queryType)
+			if !ok {
+				return
+			}
+
+			events[queryType] <- savelogs.Event{
+				TS:        time.Now().Unix(),
+				Metrics:   log.ListName,
+				IPAddress: log.IP,
+			}
+		}
 	}
-
-	return g.Wait()
 }

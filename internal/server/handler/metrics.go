@@ -19,9 +19,8 @@ import (
 
 const timeout = 10
 
-type MetricsFileService interface {
+type LogsSaver interface {
 	SetMetric(name string, metric model.Metrics)
-	Save() error
 }
 
 type Pinger interface {
@@ -29,23 +28,23 @@ type Pinger interface {
 }
 
 type MetricsHandler struct {
-	metricsService     pkgContracts.MetricsService
-	metricsFileService MetricsFileService
-	metricsDBService   Pinger
-	auditLogs          auditlogs.AuditLogs
+	metricsService   pkgContracts.MetricsService
+	logsSaverService LogsSaver
+	metricsDBService Pinger
+	auditLogs        auditlogs.AuditLogs
 }
 
 func NewMetricsHandler(
 	metricsService pkgContracts.MetricsService,
-	metricsFileService MetricsFileService,
+	logsSaverService LogsSaver,
 	metricsDBService Pinger,
 	auditLogs auditlogs.AuditLogs,
 ) *MetricsHandler {
 	return &MetricsHandler{
-		metricsService:     metricsService,
-		metricsFileService: metricsFileService,
-		metricsDBService:   metricsDBService,
-		auditLogs:          auditLogs,
+		metricsService:   metricsService,
+		logsSaverService: logsSaverService,
+		metricsDBService: metricsDBService,
+		auditLogs:        auditLogs,
 	}
 }
 
@@ -186,9 +185,9 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 		return
 	}
 
-	h.metricsFileService.SetMetric(metrics.Name, *item)
+	h.logsSaverService.SetMetric(metrics.Name, *item)
 
-	h.auditLogs.Add(dto.MetricAudit{
+	h.auditLogs.Add(dto.AuditLog{
 		ListName: []string{metrics.Name},
 		IP:       c.RemoteIP(),
 	})
@@ -264,12 +263,12 @@ func (h *MetricsHandler) UpdatesHandler(c *gin.Context) {
 
 	listName := make([]string, 0, len(dbMetrics))
 	for _, dbMetric := range dbMetrics {
-		h.metricsFileService.SetMetric(dbMetric.Name, dbMetric)
+		h.logsSaverService.SetMetric(dbMetric.Name, dbMetric)
 
 		listName = append(listName, dbMetric.Name)
 	}
 
-	h.auditLogs.Add(dto.MetricAudit{
+	h.auditLogs.Add(dto.AuditLog{
 		ListName: listName,
 		IP:       c.RemoteIP(),
 	})

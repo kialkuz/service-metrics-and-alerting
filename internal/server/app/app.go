@@ -20,7 +20,8 @@ import (
 	"go.uber.org/zap"
 
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
-	"kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
+	auditlogs "kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
+	auditLogsQueue "kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs/queue"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -28,7 +29,7 @@ import (
 type App struct {
 	Handler       *handler.MetricsHandler
 	Pool          *pgxpool.Pool
-	FileService   *service.FileService
+	LogsSaver     *service.LogsSaverService
 	LogsPublisher publisher.Publisher
 }
 
@@ -62,9 +63,12 @@ func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Confi
 		storage = memory.NewMemoryStorage()
 	}
 
-	auditLogs := auditlogs.NewAuditLogsQuery()
+	auditLogsQueue := auditLogsQueue.NewAuditLogsQueryList(map[string]int{
+		subscriber.AuditTypeFile: auditLogsQueue.MaxThreads,
+		subscriber.AuditTypeURL:  auditLogsQueue.MaxThreads,
+	})
 
-	logsPublisher, err := getLogsPublisher(cfg, auditLogs, logger)
+	logsPublisher, err := getLogsPublisher(cfg, auditLogsQueue, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error prepare logs publisher: %s", err.Error())
 	}
@@ -78,19 +82,19 @@ func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Confi
 		}
 	}
 
-	fileService := service.NewFileService(fileStorage, cfg.StoreInterval)
+	logsSaver := service.NewLogsSaverService(fileStorage, cfg.StoreInterval)
 
 	handler := handler.NewMetricsHandler(
 		metricsService,
-		fileService,
+		logsSaver,
 		service.NewPingerService(pinger),
-		auditLogs,
+		auditLogsQueue,
 	)
 
 	return &App{
 		Handler:       handler,
 		Pool:          pool,
-		FileService:   fileService,
+		LogsSaver:     logsSaver,
 		LogsPublisher: logsPublisher,
 	}, nil
 }

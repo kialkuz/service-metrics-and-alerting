@@ -2,56 +2,104 @@ package subscriber
 
 import (
 	"context"
+	"errors"
+	loggerMocks "kialkuz/service-metrics-and-alerting/internal/logger/mocks"
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs"
-	"net/http"
-	"net/http/httptest"
-	"sync/atomic"
+	loggerRetrier "kialkuz/service-metrics-and-alerting/internal/service/retrier/mocks"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-func TestAuditURL_Save_ServerError(t *testing.T) {
-	var attempts atomic.Int32
+func TestAuditFile_Save_InvalidUrl(t *testing.T) {
+	audit, err := NewAuditURL("test.ru")
+	require.Nil(t, audit)
+	require.Error(t, err)
+}
 
-	server := httptest.NewServer(http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			attempts.Add(1)
-			w.WriteHeader(http.StatusInternalServerError)
-		},
-	))
-	defer server.Close()
+func TestAuditURL_Save_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
 
-	audit, err := NewAuditURL(server.URL)
-	require.NoError(t, err)
+	logger := loggerMocks.NewMockLogger(ctrl)
+	retrierMock := loggerRetrier.NewMockRetrier(ctrl)
 
-	err = audit.Save(context.Background(), savelogs.Event{
+	var loggerErr error
+
+	logger.EXPECT().
+		Error(gomock.Any()).
+		Do(func(args ...any) {
+			loggerErr = args[0].(error)
+		}).
+		AnyTimes()
+
+	retrierMock.EXPECT().
+		WithRetry(gomock.Any(), gomock.Any()).
+		Return(errors.New("test error"))
+
+	auditURL := &AuditURL{
+		Audit:    Audit{AuditType: AuditTypeURL},
+		savePath: "http://localhost:8080/audit",
+		retrier:  retrierMock,
+	}
+
+	auditURL.SetLogger(logger)
+
+	events := make(chan savelogs.Event, 1)
+
+	events <- savelogs.Event{
 		TS:        time.Now().Unix(),
 		Metrics:   []string{"test"},
 		IPAddress: "127.0.0.1",
-	})
+	}
 
-	require.Error(t, err)
-	assert.Equal(t, int32(4), attempts.Load())
+	close(events)
+
+	auditURL.Save(context.TODO(), events)
+
+	require.Error(t, loggerErr)
+	require.EqualError(t, loggerErr, "test error")
 }
 
-func TestAuditURL_Save_Success(t *testing.T) {
-	expectedEvent := savelogs.Event{}
+func TestAuditUrl_Save_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+	logger := loggerMocks.NewMockLogger(ctrl)
+	retrierMock := loggerRetrier.NewMockRetrier(ctrl)
 
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+	var loggerErr error
 
-	audit, err := NewAuditURL(server.URL)
-	require.NoError(t, err)
+	logger.EXPECT().
+		Error(gomock.Any()).
+		Do(func(args ...any) {
+			loggerErr = args[0].(error)
+		}).
+		AnyTimes()
 
-	err = audit.Save(context.Background(), expectedEvent)
+	retrierMock.EXPECT().
+		WithRetry(gomock.Any(), gomock.Any()).
+		Return(nil)
 
-	require.NoError(t, err)
+	auditURL := &AuditURL{
+		Audit:    Audit{AuditType: AuditTypeURL},
+		savePath: "http://localhost:8080/audit",
+		retrier:  retrierMock,
+	}
+
+	auditURL.SetLogger(logger)
+
+	events := make(chan savelogs.Event, 1)
+
+	events <- savelogs.Event{
+		TS:        time.Now().Unix(),
+		Metrics:   []string{"test"},
+		IPAddress: "127.0.0.1",
+	}
+
+	close(events)
+
+	auditURL.Save(context.TODO(), events)
+
+	require.NoError(t, loggerErr)
 }

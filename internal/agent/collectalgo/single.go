@@ -3,9 +3,9 @@ package collectalgo
 import (
 	"context"
 	"kialkuz/service-metrics-and-alerting/internal/dto"
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/storage"
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	service "kialkuz/service-metrics-and-alerting/internal/service/agent"
+	"kialkuz/service-metrics-and-alerting/internal/service/retrier"
 	"kialkuz/service-metrics-and-alerting/pkg/errorclassifier"
 
 	"golang.org/x/sync/errgroup"
@@ -16,6 +16,7 @@ const CollectSingle = "collect_single"
 type Single struct {
 	metricsService service.MetricsAgentService
 	collectConfig  CollectConfig
+	retrier        retrier.Retrier
 }
 
 func NewSingle(
@@ -25,6 +26,10 @@ func NewSingle(
 	return Single{
 		metricsService: metricsService,
 		collectConfig:  collectConfig,
+		retrier: retrier.NewRetrierService(
+			retrier.RetryConfig{Attempts: retryAttempts},
+			errorclassifier.NewNetworkErrorClassifier(),
+		),
 	}
 }
 
@@ -87,13 +92,10 @@ func (s Single) collect(metrics chan dto.Metrics) (chan dto.Metrics, error) {
 
 func (s Single) send(ctx context.Context, metrics <-chan dto.Metrics) error {
 	for metric := range metrics {
-		_, err := storage.WithRetry(
+		err := s.retrier.WithRetry(
 			ctx,
-			storage.RetryConfig{Attempts: retryAttempts},
-			errorclassifier.NewNetworkErrorClassifier(),
-			func(ctx context.Context) (struct{}, error) {
-				_, err := s.metricsService.SendSingleMetric(ctx, metric)
-				return struct{}{}, err
+			func(ctx context.Context) error {
+				return s.metricsService.SendSingleMetric(ctx, metric)
 			},
 		)
 		if err != nil {

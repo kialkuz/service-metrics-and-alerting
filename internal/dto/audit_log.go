@@ -1,6 +1,6 @@
 package dto
 
-type MetricAudit struct {
+type AuditLog struct {
 	ListName []string
 	IP       string
 }
