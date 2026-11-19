@@ -1,11 +1,11 @@
-package subscriber
+package audit
 
 import (
 	"context"
 	"fmt"
 	loggerMocks "kialkuz/service-metrics-and-alerting/internal/logger/mocks"
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs"
-	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber/mocks"
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber/audit/mocks"
 	"testing"
 	"time"
 

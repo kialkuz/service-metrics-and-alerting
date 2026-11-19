@@ -1,4 +1,4 @@
-package subscriber
+package audit
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	AuditTypeURL  = "url"
+	AuditTypeURL  = "URL"
 	retryAttempts = 3
 )
 
@@ -23,6 +23,12 @@ type AuditURL struct {
 	Audit
 	savePath string
 	retrier  retrier.Retrier
+}
+
+func init() {
+	RegisterAuditSubscriber(AuditTypeURL, func(value string) (AuditSaver, error) {
+		return NewAuditURL(value)
+	})
 }
 
 func NewAuditURL(savePath string) (AuditSaver, error) {
@@ -51,7 +57,7 @@ func (a AuditURL) Save(ctx context.Context, events <-chan savelogs.Event) {
 		err = a.sendJSONBody(ctx, jsonData)
 		if err != nil {
 			a.logger.Error(err)
-			return
+			continue
 		}
 	}
 }

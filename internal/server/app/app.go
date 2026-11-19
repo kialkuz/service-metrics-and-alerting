@@ -12,15 +12,17 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"kialkuz/service-metrics-and-alerting/internal/server/handler"
 	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
+	"maps"
+	"slices"
 
 	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/publisher"
-	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber"
+	subscriberAudit "kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber/audit"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
-	auditlogs "kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
+	"kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
 	auditLogsQueue "kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs/queue"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -63,15 +65,14 @@ func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Confi
 		storage = memory.NewMemoryStorage()
 	}
 
-	auditLogsQueue := auditLogsQueue.NewAuditLogsQueryList(map[string]int{
-		subscriber.AuditTypeFile: auditLogsQueue.MaxThreads,
-		subscriber.AuditTypeURL:  auditLogsQueue.MaxThreads,
-	})
-
-	logsPublisher, err := getLogsPublisher(cfg, auditLogsQueue, logger)
+	auditList, err := subscriberAudit.GetAuditList(cfg.AuditConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error prepare logs publisher: %s", err.Error())
+		return nil, err
 	}
+
+	auditLogsQueue := auditLogsQueue.NewAuditLogsQueueList(
+		slices.Collect(maps.Keys(auditList)),
+	)
 
 	metricsService := service.NewMetricsService(storage)
 
@@ -90,6 +91,11 @@ func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Confi
 		service.NewPingerService(pinger),
 		auditLogsQueue,
 	)
+
+	logsPublisher, err := getLogsPublisher(logger, auditLogsQueue, auditList)
+	if err != nil {
+		return nil, fmt.Errorf("error prepare logs publisher: %s", err.Error())
+	}
 
 	return &App{
 		Handler:       handler,
@@ -130,25 +136,14 @@ func restoreMetrics(
 }
 
 func getLogsPublisher(
-	cfg *appConfig.Config,
-	auditLogs auditlogs.AuditLogs,
 	logger *zap.SugaredLogger,
+	auditLogsQueue auditlogs.AuditLogger,
+	auditList map[string]subscriberAudit.AuditSaver,
 ) (publisher.Publisher, error) {
-	logsPublisher := publisher.NewLogsPublisherQuery(auditLogs, logger)
+	logsPublisher := publisher.NewLogsPublisherQuery(auditLogsQueue, logger)
 
-	if cfg.AuditFile != "" {
-		subscriberAuditFile, err := subscriber.NewAuditFile(cfg.AuditFile)
-		if err != nil {
-			return nil, err
-		}
-		logsPublisher.Register(subscriberAuditFile)
-	}
-	if cfg.AuditURL != "" {
-		subscriberAuditURL, err := subscriber.NewAuditURL(cfg.AuditURL)
-		if err != nil {
-			return nil, err
-		}
-		logsPublisher.Register(subscriberAuditURL)
+	for _, audit := range auditList {
+		logsPublisher.Register(audit)
 	}
 
 	return logsPublisher, nil

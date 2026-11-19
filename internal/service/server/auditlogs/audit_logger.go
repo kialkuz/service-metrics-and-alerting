@@ -5,7 +5,7 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 )
 
-type AuditLogs interface {
+type AuditLogger interface {
 	Add(log dto.AuditLog)
 	Pop(ctx context.Context, queryType string) (*dto.AuditLog, bool)
 }

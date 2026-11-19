@@ -65,7 +65,10 @@ func run(sugarlogger *zap.SugaredLogger) error {
 	}()
 
 	go appServer.LogsSaver.SaveWithInterval(ctx)
-	go appServer.LogsPublisher.Save(ctx)
+
+	if len(appServer.LogsPublisher.GetObservers()) > 0 {
+		go appServer.LogsPublisher.Save(ctx)
+	}
 
 	newServer := serverInit.NewServer(
 		appServer.Handler,

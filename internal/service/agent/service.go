@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"reflect"
 	"runtime"
+	"time"
 
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
@@ -145,7 +146,9 @@ func (s *MetricsService) sendJSONBody(ctx context.Context, jsonData []byte, path
 		return err
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
 	requestData, err := http.NewRequestWithContext(ctx, http.MethodPost, s.url+path, bytes.NewReader(b))
 	if err != nil {
 		return err

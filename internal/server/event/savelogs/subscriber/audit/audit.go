@@ -1,4 +1,4 @@
-package subscriber
+package audit
 
 import (
 	"context"

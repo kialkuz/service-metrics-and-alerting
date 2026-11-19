@@ -5,17 +5,17 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/dto"
 )
 
-const MaxThreads = 10
+const maxThreads = 10
 
 type AuditLogsQueueList struct {
 	queues map[string]Queue
 }
 
-func NewAuditLogsQueryList(queuesWithCountElems map[string]int) *AuditLogsQueueList {
-	queues := make(map[string]Queue, len(queuesWithCountElems))
+func NewAuditLogsQueueList(queuesName []string) *AuditLogsQueueList {
+	queues := make(map[string]Queue, len(queuesName))
 
-	for queueName, countElems := range queuesWithCountElems {
-		queues[queueName] = NewQuery(countElems)
+	for _, queueName := range queuesName {
+		queues[queueName] = NewQuery(maxThreads)
 	}
 
 	return &AuditLogsQueueList{

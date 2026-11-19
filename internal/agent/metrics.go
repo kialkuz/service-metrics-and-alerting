@@ -43,7 +43,10 @@ func (a *MetricsAgent) CollectAndSend(ctx context.Context) error {
 					return err
 				}
 
-				collectalgo.CollectAndSend(ctx)
+				err = collectalgo.CollectAndSend(ctx)
+				if err != nil {
+					return err
+				}
 
 				now = time.Now()
 			}

@@ -31,20 +31,20 @@ type MetricsHandler struct {
 	metricsService   pkgContracts.MetricsService
 	logsSaverService LogsSaver
 	metricsDBService Pinger
-	auditLogs        auditlogs.AuditLogs
+	auditLogger      auditlogs.AuditLogger
 }
 
 func NewMetricsHandler(
 	metricsService pkgContracts.MetricsService,
 	logsSaverService LogsSaver,
 	metricsDBService Pinger,
-	auditLogs auditlogs.AuditLogs,
+	auditLogger auditlogs.AuditLogger,
 ) *MetricsHandler {
 	return &MetricsHandler{
 		metricsService:   metricsService,
 		logsSaverService: logsSaverService,
 		metricsDBService: metricsDBService,
-		auditLogs:        auditLogs,
+		auditLogger:      auditLogger,
 	}
 }
 
@@ -187,7 +187,7 @@ func (h *MetricsHandler) UpdateHandler(c *gin.Context) {
 
 	h.logsSaverService.SetMetric(metrics.Name, *item)
 
-	h.auditLogs.Add(dto.AuditLog{
+	h.auditLogger.Add(dto.AuditLog{
 		ListName: []string{metrics.Name},
 		IP:       c.RemoteIP(),
 	})
@@ -268,7 +268,7 @@ func (h *MetricsHandler) UpdatesHandler(c *gin.Context) {
 		listName = append(listName, dbMetric.Name)
 	}
 
-	h.auditLogs.Add(dto.AuditLog{
+	h.auditLogger.Add(dto.AuditLog{
 		ListName: listName,
 		IP:       c.RemoteIP(),
 	})

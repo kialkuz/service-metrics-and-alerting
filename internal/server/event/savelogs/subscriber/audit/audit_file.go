@@ -1,4 +1,4 @@
-package subscriber
+package audit
 
 import (
 	"context"
@@ -12,12 +12,18 @@ import (
 	"sync"
 )
 
-const AuditTypeFile = "file"
+const AuditTypeFile = "File"
 
 type AuditFile struct {
 	Audit
 	m    sync.Mutex
 	file io.WriteCloser
+}
+
+func init() {
+	RegisterAuditSubscriber(AuditTypeFile, func(value string) (AuditSaver, error) {
+		return NewAuditFile(value)
+	})
 }
 
 func NewAuditFile(savePath string) (AuditSaver, error) {
@@ -38,7 +44,7 @@ func (a *AuditFile) Save(ctx context.Context, events <-chan savelogs.Event) {
 		jsonData, err := json.Marshal(event)
 		if err != nil {
 			a.logger.Error(fmt.Errorf("ошибка сериализации JSON: %w, ip: %s", err, event.IPAddress))
-			return
+			continue
 		}
 		jsonData = append(jsonData, '\n')
 
@@ -48,7 +54,7 @@ func (a *AuditFile) Save(ctx context.Context, events <-chan savelogs.Event) {
 
 		if err != nil {
 			a.logger.Error(fmt.Errorf("ошибка записи в файл логов аудита: %w, ip: %s", err, event.IPAddress))
-			return
+			continue
 		}
 	}
 }

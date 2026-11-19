@@ -17,8 +17,7 @@ type Config struct {
 	FileStoragePath string
 	Restore         bool
 	Key             string
-	AuditFile       string
-	AuditURL        string
+	AuditConfig     AuditConfig
 }
 
 func NewConfig() (*Config, error) {
@@ -37,7 +36,9 @@ func NewConfig() (*Config, error) {
 		FileStoragePath: config.FileStoragePath,
 		Restore:         config.Restore,
 		Key:             config.Key,
-		AuditFile:       config.AuditFile,
-		AuditURL:        config.AuditURL,
+		AuditConfig: AuditConfig{
+			File: config.AuditFile,
+			URL:  config.AuditURL,
+		},
 	}, nil
 }
