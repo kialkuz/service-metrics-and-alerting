@@ -25,12 +25,6 @@ type AuditURL struct {
 	retrier  retrier.Retrier
 }
 
-func init() {
-	RegisterAuditSubscriber(AuditTypeURL, func(value string) (AuditSaver, error) {
-		return NewAuditURL(value)
-	})
-}
-
 func NewAuditURL(savePath string) (AuditSaver, error) {
 	if !service.IsURL(savePath) {
 		return nil, pkgErrors.ErrNotURL
@@ -51,7 +45,7 @@ func (a AuditURL) Save(ctx context.Context, events <-chan savelogs.Event) {
 		jsonData, err := json.MarshalIndent(event, "", " ")
 		if err != nil {
 			a.logger.Error(fmt.Errorf("ошибка сериализации JSON: %w", err))
-			return
+			continue
 		}
 
 		err = a.sendJSONBody(ctx, jsonData)

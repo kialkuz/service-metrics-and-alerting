@@ -19,7 +19,7 @@ func (p *LogsPublisher) Register(o subscriberAudit.AuditSaver) {
 }
 
 func (p *LogsPublisher) Shutdown() {
-	for _, observer := range p.observers {
+	for _, observer := range p.GetObservers() {
 		p.Deregister(observer)
 	}
 }

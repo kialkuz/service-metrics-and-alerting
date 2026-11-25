@@ -78,3 +78,43 @@ func (c *MockLoggerErrorCall) DoAndReturn(f func(...any)) *MockLoggerErrorCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
+// Warn mocks base method.
+func (m *MockLogger) Warn(args ...any) {
+	m.ctrl.T.Helper()
+	varargs := []any{}
+	for _, a := range args {
+		varargs = append(varargs, a)
+	}
+	m.ctrl.Call(m, "Warn", varargs...)
+}
+
+// Warn indicates an expected call of Warn.
+func (mr *MockLoggerMockRecorder) Warn(args ...any) *MockLoggerWarnCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Warn", reflect.TypeOf((*MockLogger)(nil).Warn), args...)
+	return &MockLoggerWarnCall{Call: call}
+}
+
+// MockLoggerWarnCall wrap *gomock.Call
+type MockLoggerWarnCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockLoggerWarnCall) Return() *MockLoggerWarnCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockLoggerWarnCall) Do(f func(...any)) *MockLoggerWarnCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockLoggerWarnCall) DoAndReturn(f func(...any)) *MockLoggerWarnCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}

@@ -7,31 +7,25 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
 	"maps"
 	"slices"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
 )
 
-type Publisher interface {
-	Register(subscriberAudit.AuditSaver)
-	Shutdown()
-	Deregister(subscriberAudit.AuditSaver)
-	GetObservers() map[string]subscriberAudit.AuditSaver
-	Save(ctx context.Context)
-}
-
 type LogsPublisherQuery struct {
 	LogsPublisher
 	auditLogger auditlogs.AuditLogger
 	logger      *zap.SugaredLogger
-	eventsChans map[string]chan savelogs.Event
+	wg          *sync.WaitGroup
 }
 
-func NewLogsPublisherQuery(auditLogger auditlogs.AuditLogger, logger *zap.SugaredLogger) Publisher {
+func NewLogsPublisherQuery(auditLogger auditlogs.AuditLogger, logger *zap.SugaredLogger) *LogsPublisherQuery {
 	return &LogsPublisherQuery{
 		LogsPublisher: NewLogsPublisher(),
 		auditLogger:   auditLogger,
 		logger:        logger,
+		wg:            &sync.WaitGroup{},
 	}
 }
 
@@ -40,47 +34,31 @@ func (p *LogsPublisherQuery) Register(o subscriberAudit.AuditSaver) {
 	p.LogsPublisher.Register(o)
 }
 
-func (p *LogsPublisherQuery) Shutdown() {
-	for _, o := range p.GetObservers() {
-		close(p.eventsChans[o.GetAuditType()])
+func (p *LogsPublisherQuery) Shutdown(eventsChans map[string]chan savelogs.Event) {
+	for _, ch := range eventsChans {
+		close(ch)
 	}
+
+	p.wg.Wait()
 
 	p.LogsPublisher.Shutdown()
 }
 
-func (p *LogsPublisherQuery) Deregister(o subscriberAudit.AuditSaver) {
-	eventsChan := p.eventsChans[o.GetAuditType()]
-
-	if len(eventsChan) > 0 {
-		for {
-			if len(eventsChan) > 0 {
-				time.Sleep(time.Duration(1 * time.Second))
-				continue
-			}
-
-			break
-		}
-	}
-
-	p.LogsPublisher.Deregister(o)
-}
-
 func (p *LogsPublisherQuery) Save(ctx context.Context) {
-	p.eventsChans = p.getChans()
+	var eventsChans map[string]chan savelogs.Event
 
 	for {
 		select {
 		case <-ctx.Done():
-			for _, observer := range p.GetObservers() {
-				p.Deregister(observer)
-			}
+			p.Shutdown(eventsChans)
 			return
 		default:
-			for name, observer := range p.GetObservers() {
-				go observer.Save(ctx, p.eventsChans[name])
+			if eventsChans == nil {
+				eventsChans = p.getChans()
+				p.startSubscribers(ctx, eventsChans)
 			}
 
-			p.sendToSubscriber(ctx, p.eventsChans)
+			p.sendToSubscriber(ctx, eventsChans)
 		}
 	}
 }
@@ -93,6 +71,19 @@ func (p *LogsPublisherQuery) getChans() map[string]chan savelogs.Event {
 	}
 
 	return chans
+}
+
+func (p *LogsPublisherQuery) startSubscribers(
+	ctx context.Context,
+	eventsChans map[string]chan savelogs.Event,
+) {
+	for name, observer := range p.GetObservers() {
+		p.wg.Add(1)
+		p.wg.Go(func() {
+			defer p.wg.Done()
+			observer.Save(ctx, eventsChans[name])
+		})
+	}
 }
 
 func (p *LogsPublisherQuery) sendToSubscriber(ctx context.Context, eventsChans map[string]chan savelogs.Event) {

@@ -20,12 +20,6 @@ type AuditFile struct {
 	file io.WriteCloser
 }
 
-func init() {
-	RegisterAuditSubscriber(AuditTypeFile, func(value string) (AuditSaver, error) {
-		return NewAuditFile(value)
-	})
-}
-
 func NewAuditFile(savePath string) (AuditSaver, error) {
 	if !service.IsFileName(savePath) {
 		return nil, pkgErrors.ErrNotFIleName

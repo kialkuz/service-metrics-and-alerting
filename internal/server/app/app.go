@@ -32,7 +32,7 @@ type App struct {
 	Handler       *handler.MetricsHandler
 	Pool          *pgxpool.Pool
 	LogsSaver     *service.LogsSaverService
-	LogsPublisher publisher.Publisher
+	LogsPublisher *publisher.LogsPublisherQuery
 }
 
 func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Config) (*App, error) {
@@ -72,6 +72,7 @@ func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Confi
 
 	auditLogsQueue := auditLogsQueue.NewAuditLogsQueueList(
 		slices.Collect(maps.Keys(auditList)),
+		logger,
 	)
 
 	metricsService := service.NewMetricsService(storage)
@@ -139,7 +140,7 @@ func getLogsPublisher(
 	logger *zap.SugaredLogger,
 	auditLogsQueue auditlogs.AuditLogger,
 	auditList map[string]subscriberAudit.AuditSaver,
-) (publisher.Publisher, error) {
+) (*publisher.LogsPublisherQuery, error) {
 	logsPublisher := publisher.NewLogsPublisherQuery(auditLogsQueue, logger)
 
 	for _, audit := range auditList {
