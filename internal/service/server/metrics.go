@@ -15,7 +15,7 @@ type MetricsRepository interface {
 	GetList(ctx context.Context) ([]model.Metrics, error)
 }
 
-//go:generate go run go.uber.org/mock/mockgen -source=metrics_service.go -destination=mocks/metrics_service_mock.go -package=mocks -typed
+//go:generate go run go.uber.org/mock/mockgen -source=metrics.go -destination=mocks/metrics_service_mock.go -package=mocks -typed
 type MetricsService struct {
 	metricsRepository MetricsRepository
 }
@@ -128,6 +128,8 @@ func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Met
 		}
 	}
 
+	clear(existMetrics)
+
 	var metricsForInsert []model.Metrics
 	if len(preparedForInsert) > 0 {
 		for _, metricsByType := range preparedForInsert {
@@ -135,6 +137,7 @@ func (s *MetricsService) SaveMetricList(ctx context.Context, metrics []model.Met
 				metricsForInsert = append(metricsForInsert, metric)
 			}
 		}
+		clear(preparedForInsert)
 	}
 
 	return s.metricsRepository.SaveList(ctx, metricsForInsert, metricsForUpdate)

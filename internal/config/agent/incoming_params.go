@@ -3,6 +3,8 @@ package agent
 import (
 	"flag"
 
+	"kialkuz/service-metrics-and-alerting/internal/agent/collectalgo"
+
 	"github.com/caarlos0/env/v11"
 )
 
@@ -12,6 +14,7 @@ const (
 	defaultPollInterval   = 1
 	defaultKey            = ""
 	defaultRateLimit      = 1
+	defaultCollectAlgo    = collectalgo.CollectAll
 )
 
 type incomingParams struct {
@@ -20,6 +23,7 @@ type incomingParams struct {
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	Key            string `env:"KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
+	CollectAlgo    string
 }
 
 func GetIncomingParams() (*incomingParams, error) {
@@ -29,6 +33,7 @@ func GetIncomingParams() (*incomingParams, error) {
 		PollInterval:   defaultPollInterval,
 		Key:            defaultKey,
 		RateLimit:      defaultRateLimit,
+		CollectAlgo:    defaultCollectAlgo,
 	}
 
 	flag.StringVar(&cfg.Address, "a", cfg.Address, "server address")
@@ -36,6 +41,7 @@ func GetIncomingParams() (*incomingParams, error) {
 	flag.IntVar(&cfg.PollInterval, "p", cfg.PollInterval, "poll interval")
 	flag.StringVar(&cfg.Key, "k", cfg.Key, "query sign")
 	flag.IntVar(&cfg.RateLimit, "l", cfg.RateLimit, "rate limit")
+	flag.StringVar(&cfg.CollectAlgo, "c", cfg.CollectAlgo, "collect algo")
 	flag.Parse()
 
 	err := env.Parse(cfg)

@@ -6,6 +6,7 @@ type Config struct {
 	Key            string
 	RateLimit      int
 	URL            string
+	CollectAlgo    string
 }
 
 func NewConfig() (*Config, error) {
@@ -20,5 +21,6 @@ func NewConfig() (*Config, error) {
 		Key:            config.Key,
 		RateLimit:      config.RateLimit,
 		URL:            "http://" + config.Address,
+		CollectAlgo:    config.CollectAlgo,
 	}, nil
 }

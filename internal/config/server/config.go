@@ -5,26 +5,22 @@ import (
 
 	"kialkuz/service-metrics-and-alerting/internal/config/db"
 	"kialkuz/service-metrics-and-alerting/internal/config/db/postgresql"
-	"kialkuz/service-metrics-and-alerting/internal/infrastructure/env"
 )
 
 type Config struct {
-	DBType          string
-	ServerHost      string
+	// Адрес хоста сервера
+	ServerHost string
+	// Порт сервера
 	ServerPort      string
 	DB              db.Config
 	StoreInterval   int
 	FileStoragePath string
 	Restore         bool
 	Key             string
+	AuditConfig     AuditConfig
 }
 
 func NewConfig() (*Config, error) {
-	err := env.Load()
-	if err != nil {
-		return nil, err
-	}
-
 	config, err := GetIncomingParams()
 	if err != nil {
 		return nil, err
@@ -33,7 +29,6 @@ func NewConfig() (*Config, error) {
 	addressParts := strings.Split(config.Address, ":")
 
 	return &Config{
-		DBType:          config.DBType,
 		ServerHost:      addressParts[0],
 		ServerPort:      addressParts[1],
 		DB:              *postgresql.NewConfig(config.DatabaseDSN),
@@ -41,5 +36,9 @@ func NewConfig() (*Config, error) {
 		FileStoragePath: config.FileStoragePath,
 		Restore:         config.Restore,
 		Key:             config.Key,
+		AuditConfig: AuditConfig{
+			File: config.AuditFile,
+			URL:  config.AuditURL,
+		},
 	}, nil
 }

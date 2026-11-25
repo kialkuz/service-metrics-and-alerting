@@ -12,21 +12,30 @@ import (
 	"kialkuz/service-metrics-and-alerting/internal/model"
 	"kialkuz/service-metrics-and-alerting/internal/server/handler"
 	pkgContracts "kialkuz/service-metrics-and-alerting/pkg/contracts"
+	"maps"
+	"slices"
+
+	"kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/publisher"
+	subscriberAudit "kialkuz/service-metrics-and-alerting/internal/server/event/savelogs/subscriber/audit"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	service "kialkuz/service-metrics-and-alerting/internal/service/server"
+	"kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs"
+	auditLogsQueue "kialkuz/service-metrics-and-alerting/internal/service/server/auditlogs/queue"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type App struct {
-	Handler     *handler.MetricsHandler
-	Pool        *pgxpool.Pool
-	FileService *service.FileService
+	Handler       *handler.MetricsHandler
+	Pool          *pgxpool.Pool
+	LogsSaver     *service.LogsSaverService
+	LogsPublisher *publisher.LogsPublisherQuery
 }
 
-func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
+func NewApp(ctx context.Context, logger *zap.SugaredLogger, cfg *appConfig.Config) (*App, error) {
 	var (
 		storage service.MetricsRepository
 		pinger  *db.MemStorage
@@ -56,6 +65,16 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		storage = memory.NewMemoryStorage()
 	}
 
+	auditList, err := subscriberAudit.GetAuditList(cfg.AuditConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	auditLogsQueue := auditLogsQueue.NewAuditLogsQueueList(
+		slices.Collect(maps.Keys(auditList)),
+		logger,
+	)
+
 	metricsService := service.NewMetricsService(storage)
 
 	if cfg.Restore {
@@ -65,18 +84,25 @@ func NewApp(ctx context.Context, cfg *appConfig.Config) (*App, error) {
 		}
 	}
 
-	fileService := service.NewFileService(fileStorage, cfg.StoreInterval)
+	logsSaver := service.NewLogsSaverService(fileStorage, cfg.StoreInterval)
 
 	handler := handler.NewMetricsHandler(
 		metricsService,
-		fileService,
+		logsSaver,
 		service.NewPingerService(pinger),
+		auditLogsQueue,
 	)
 
+	logsPublisher, err := getLogsPublisher(logger, auditLogsQueue, auditList)
+	if err != nil {
+		return nil, fmt.Errorf("error prepare logs publisher: %s", err.Error())
+	}
+
 	return &App{
-		Handler:     handler,
-		Pool:        pool,
-		FileService: fileService,
+		Handler:       handler,
+		Pool:          pool,
+		LogsSaver:     logsSaver,
+		LogsPublisher: logsPublisher,
 	}, nil
 }
 
@@ -108,4 +134,18 @@ func restoreMetrics(
 	}
 
 	return nil
+}
+
+func getLogsPublisher(
+	logger *zap.SugaredLogger,
+	auditLogsQueue auditlogs.AuditLogger,
+	auditList map[string]subscriberAudit.AuditSaver,
+) (*publisher.LogsPublisherQuery, error) {
+	logsPublisher := publisher.NewLogsPublisherQuery(auditLogsQueue, logger)
+
+	for _, audit := range auditList {
+		logsPublisher.Register(audit)
+	}
+
+	return logsPublisher, nil
 }
